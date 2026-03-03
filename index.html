@@ -2,75 +2,56 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nekadar Kaldı - Dünya Haritası</title>
     <style>
         body {
             margin: 0;
-            padding: 0;
-            background-color: #0b0b0b; /* Çok koyu gri/siyah arka plan */
-            font-family: sans-serif;
+            background-color: #0b0b0b;
             display: flex;
             flex-direction: column;
             align-items: center;
+            font-family: sans-serif;
+            color: #eee;
         }
 
-        /* Harita Konteynırı */
+        .title { margin-top: 30px; letter-spacing: 3px; font-weight: 300; }
+
+        /* Harita Kutusu: Orta-Üst, Şık ve Sınırları Belli */
         .map-container {
-            margin-top: 50px;
-            width: 60%; /* Çok büyük olmaması için */
-            max-width: 800px;
+            margin-top: 40px;
+            width: 800px; 
+            height: 450px;
+            background-color: #1a1a1a; /* Deniz Rengi */
+            border-radius: 12px;
+            overflow: hidden; /* Zoom dışarı taşmasın */
             position: relative;
-            background-color: #1a1a1a; /* Deniz rengi: Açık siyah */
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            overflow: visible;
+            border: 1px solid #333;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
         }
 
-        /* SVG Harita Stili */
         svg {
             width: 100%;
-            height: auto;
-            transition: filter 0.5s ease;
+            height: 100%;
+            transition: transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
-        /* Ülke (Kara Parçaları) Stili */
+        /* Kara Parçaları: Açık Gri */
         path {
-            fill: #4a4a4a; /* Kara parçaları: Koyu gri */
-            stroke: #2a2a2a; /* Sınır çizgileri */
-            stroke-width: 0.5;
-            cursor: pointer;
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
-                        fill 0.3s ease;
-            transform-origin: center;
+            fill: #4a4a4a;
+            stroke: #1a1a1a;
+            stroke-width: 0.4;
+            transition: fill 0.3s ease, filter 0.8s ease, opacity 0.8s ease;
+            cursor: crosshair;
         }
 
-        path:hover {
-            fill: #808080; /* Üstüne gelince açık gri */
-            /* 3 saniye bekleme animasyonu tetikleyicisi */
-            transition-delay: 3s; 
-            transform: scale(2.5); /* Çerçeve kadar büyüme */
-            z-index: 100;
-            position: relative;
-        }
+        /* Hover anında anlık parlaması */
+        path:hover { fill: #aaaaaa; }
 
-        /* Blur Efekti: Bir ülkeye odaklanıldığında haritanın geri kalanı */
-        .map-container:has(path:hover) svg {
-            filter: blur(4px);
-            transition-delay: 3s;
-        }
+        /* Zoomlandığında diğerlerinin hali */
+        .blurred { filter: blur(5px); opacity: 0.2; }
 
-        /* Hover edilen ülkenin blurdan etkilenmemesi için */
-        path:hover {
-            filter: blur(0) !important;
-        }
-
-        .title {
-            color: #eee;
-            margin-top: 20px;
-            letter-spacing: 2px;
-        }
+        /* Zoomlanan ülke */
+        .focused { fill: #ffffff !important; filter: none !important; opacity: 1 !important; }
     </style>
 </head>
 <body>
@@ -78,9 +59,81 @@
     <h2 class="title">NE KADAR KALDI?</h2>
 
     <div class="map-container">
-        <svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
-            <path d="M200,100 Q250,50 300,100 T400,150 L350,250 Z" /> <path d="M500,200 Q550,150 600,200 T700,250 L650,350 Z" /> <path d="M700,50 Q750,20 800,50 T900,100 L850,200 Z" /> </svg>
+        <svg id="worldMap" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+            <g id="countries-group"></g>
+        </svg>
     </div>
 
+<script>
+    const group = document.getElementById('countries-group');
+    const svg = document.getElementById('worldMap');
+    let zoomTimer;
+
+    // Gerçek dünya haritası verisini (path'leri) çekiyoruz
+    // Bu URL dünya üzerindeki tüm ülkelerin SVG koordinatlarını içerir
+    fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson')
+        .then(res => res.json())
+        .then(geoData => {
+            geoData.features.forEach(feature => {
+                // Basit bir projeksiyon simülasyonu ile path oluşturma
+                const pathData = feature.geometry.coordinates;
+                // Not: Karmaşık GeoJSON'ı SVG pathine çeviren hazır bir mini mantık:
+                const pathElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                
+                // Bu kısım koordinatları SVG'ye basar (Basitleştirilmiş temsil)
+                // Gerçek projede 'd' niteliği koordinatlarla dolar.
+                // Senin için buraya çalışan bir koordinat seti çeken fonksiyonu bağladım:
+                drawCountry(feature, pathElement);
+                
+                pathElement.addEventListener('mouseenter', () => {
+                    zoomTimer = setTimeout(() => zoom(pathElement), 2000);
+                });
+                pathElement.addEventListener('mouseleave', () => {
+                    clearTimeout(zoomTimer);
+                    reset();
+                });
+                group.appendChild(pathElement);
+            });
+        });
+
+    function drawCountry(feature, el) {
+        // Koordinatları SVG path formatına çeviren basitleştirilmiş döngü
+        let d = "";
+        feature.geometry.coordinates.forEach(poly => {
+            const coords = feature.geometry.type === "MultiPolygon" ? poly[0] : poly;
+            coords.forEach((c, i) => {
+                const x = (c[0] + 180) * (1000 / 360);
+                const y = (90 - c[1]) * (500 / 180);
+                d += (i === 0 ? "M" : "L") + x + "," + y;
+            });
+            d += "Z";
+        });
+        el.setAttribute("d", d);
+    }
+
+    function zoom(el) {
+        const bbox = el.getBBox();
+        const scale = Math.min(800 / bbox.width, 450 / bbox.height) * 0.7;
+        const centerX = bbox.x + bbox.width / 2;
+        const centerY = bbox.y + bbox.height / 2;
+
+        const tx = 500 - (centerX * scale);
+        const ty = 250 - (centerY * scale);
+
+        svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+        
+        document.querySelectorAll('path').forEach(p => {
+            if(p === el) p.classList.add('focused');
+            else p.classList.add('blurred');
+        });
+    }
+
+    function reset() {
+        svg.style.transform = "translate(0,0) scale(1)";
+        document.querySelectorAll('path').forEach(p => {
+            p.classList.remove('focused', 'blurred');
+        });
+    }
+</script>
 </body>
 </html>
