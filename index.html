@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Özel Sayaç ve Panel</title>
+    <title>Özel Sayaç ve Admin Paneli</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
     <style>
         :root {
             --bg-color: #000000;
@@ -36,7 +40,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6); /* Görseli karartır */
+            background: rgba(0, 0, 0, 0.6);
             z-index: -1;
         }
 
@@ -48,7 +52,6 @@
             text-shadow: 0 0 10px rgba(255,255,255,0.5);
         }
 
-        /* Sayaç Kutucukları */
         .countdown-container {
             display: flex;
             flex-wrap: wrap;
@@ -140,6 +143,11 @@
             cursor: pointer;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
             z-index: 1000;
+            transition: transform 0.3s;
+        }
+
+        .panel-toggle:hover {
+            transform: scale(1.1);
         }
 
         /* Panel Tasarımı */
@@ -154,7 +162,7 @@
             padding: 20px;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
             z-index: 999;
-            display: none; /* Başlangıçta gizli */
+            display: none;
             max-height: 80vh;
             overflow-y: auto;
         }
@@ -216,7 +224,6 @@
             background: #ff6b81;
         }
 
-        /* Görsel Yükleme Alanı */
         .image-upload {
             border: 2px dashed #444;
             padding: 20px;
@@ -265,7 +272,6 @@
             text-align: center;
             margin-top: 10px;
         }
-
     </style>
 </head>
 <body>
@@ -277,7 +283,7 @@
     </div>
 
     <!-- Panel Açma Butonu -->
-    <button class="panel-toggle" onclick="togglePanel()">⚙️</button>
+    <button class="panel-toggle" onclick="checkAdminAccess()">⚙️</button>
 
     <!-- Yönetim Paneli -->
     <div class="admin-panel" id="adminPanel">
@@ -309,10 +315,49 @@
     </div>
 
     <script>
-        // --- VERİ YÖNETİMİ (LocalStorage) ---
-        let timers = JSON.parse(localStorage.getItem('myTimers')) || [];
-        let backgrounds = JSON.parse(localStorage.getItem('myBackgrounds')) || [];
-        let currentBackground = localStorage.getItem('currentBackground') || null;
+        // --- FIREBASE AYARLARI ---
+        // BURAYA FIREBASE AYARLARINI YAPIŞTIR
+        const firebaseConfig = {
+            apiKey: "BURAYA_FIREBASE_API_KEY",
+            authDomain: "BURAYA_FIREBASE_PROJECT_ID.firebaseapp.com",
+            projectId: "BURAYA_FIREBASE_PROJECT_ID",
+            storageBucket: "BURAYA_FIREBASE_PROJECT_ID.appspot.com",
+            messagingSenderId: "BURAYA_FIREBASE_SENDER_ID",
+            appId: "BURAYA_FIREBASE_APP_ID"
+        };
+
+        // Firebase'i başlat
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // --- VERİ YÖNETİMİ ---
+        let timers = [];
+        let backgrounds = [];
+        let currentBackground = null;
+
+        // Veritabanından verileri çek
+        function loadData() {
+            // Sayaçları çek
+            database.ref('timers').on('value', (snapshot) => {
+                timers = snapshot.val() || [];
+                renderTimers();
+            });
+
+            // Arka planları çek
+            database.ref('backgrounds').on('value', (snapshot) => {
+                backgrounds = snapshot.val() || [];
+                renderGallery();
+            });
+
+            // Seçili arka planı çek
+            database.ref('currentBackground').on('value', (snapshot) => {
+                currentBackground = snapshot.val();
+                if (currentBackground) {
+                    document.body.style.backgroundImage = `url('${currentBackground}')`;
+                }
+                renderGallery();
+            });
+        }
 
         // --- SAYAÇ MANTIĞI ---
         function renderTimers() {
@@ -320,7 +365,7 @@
             container.innerHTML = '';
 
             if (timers.length === 0) {
-                container.innerHTML = '<p style="color:#666; text-align:center; width:100%;">Henüz eklenmiş bir sayaç yok. Paneli açarak ekle.</p>';
+                container.innerHTML = '<p style="color:#666; text-align:center; width:100%;">Henüz eklenmiş bir sayaç yok.</p>';
                 return;
             }
 
@@ -381,6 +426,16 @@
         }
 
         // --- PANEL MANTIĞI ---
+        function checkAdminAccess() {
+            const password = prompt("Yönetici şifresini giriniz:");
+            // Şifre: "admin123" (Kodun içinde değiştirebilirsin)
+            if (password === "admin123") {
+                togglePanel();
+            } else {
+                alert("Hatalı şifre!");
+            }
+        }
+
         function togglePanel() {
             const panel = document.getElementById('adminPanel');
             panel.classList.toggle('active');
@@ -398,22 +453,24 @@
                 return;
             }
 
-            timers.push({ name, date });
-            localStorage.setItem('myTimers', JSON.stringify(timers));
-            
+            // Firebase'e kaydet
+            database.ref('timers').push({
+                name: name,
+                date: date
+            });
+
             // Formu temizle
             document.getElementById('eventName').value = '';
             document.getElementById('eventDate').value = '';
             
-            renderTimers();
             alert("Sayaç eklendi!");
         }
 
         function deleteTimer(index) {
             if(confirm("Bu sayacı silmek istediğinize emin misiniz?")) {
-                timers.splice(index, 1);
-                localStorage.setItem('myTimers', JSON.stringify(timers));
-                renderTimers();
+                // Firebase'den sil
+                const timerRef = database.ref('timers').child(timers[index].key);
+                timerRef.remove();
             }
         }
 
@@ -424,9 +481,8 @@
                 
                 reader.onload = function(e) {
                     const base64Image = e.target.result;
-                    backgrounds.push(base64Image);
-                    localStorage.setItem('myBackgrounds', JSON.stringify(backgrounds));
-                    renderGallery();
+                    // Firebase'e kaydet
+                    database.ref('backgrounds').push(base64Image);
                 }
                 
                 reader.readAsDataURL(input.files[0]);
@@ -455,18 +511,14 @@
         }
 
         function selectBackground(imgSrc) {
-            currentBackground = imgSrc;
-            localStorage.setItem('currentBackground', currentBackground);
-            document.body.style.backgroundImage = `url('${imgSrc}')`;
-            renderGallery(); // Seçimi güncellemek için
+            // Firebase'e kaydet
+            database.ref('currentBackground').set(imgSrc);
         }
 
         // --- BAŞLANGIÇ ---
-        // Sayfa yüklendiğinde arka planı ayarla
-        if (currentBackground) {
-            document.body.style.backgroundImage = `url('${currentBackground}')`;
-        }
+        loadData();
+        setInterval(updateCountdowns, 1000);
 
-        // Sayaçları başlat
-        renderTimers();
-        setInterval(updateCountdowns, 1000
+    </script>
+</body>
+</html>
