@@ -8,11 +8,62 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #0b0b0b;
+            background-color: #0b0b0b; /* Çok koyu gri/siyah arka plan */
             font-family: sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
+        }
+
+        /* Harita Konteynırı */
+        .map-container {
+            margin-top: 50px;
+            width: 60%; /* Çok büyük olmaması için */
+            max-width: 800px;
+            position: relative;
+            background-color: #1a1a1a; /* Deniz rengi: Açık siyah */
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: visible;
+        }
+
+        /* SVG Harita Stili */
+        svg {
+            width: 100%;
+            height: auto;
+            transition: filter 0.5s ease;
+        }
+
+        /* Ülke (Kara Parçaları) Stili */
+        path {
+            fill: #4a4a4a; /* Kara parçaları: Koyu gri */
+            stroke: #2a2a2a; /* Sınır çizgileri */
+            stroke-width: 0.5;
+            cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+                        fill 0.3s ease;
+            transform-origin: center;
+        }
+
+        path:hover {
+            fill: #808080; /* Üstüne gelince açık gri */
+            /* 3 saniye bekleme animasyonu tetikleyicisi */
+            transition-delay: 3s; 
+            transform: scale(2.5); /* Çerçeve kadar büyüme */
+            z-index: 100;
+            position: relative;
+        }
+
+        /* Blur Efekti: Bir ülkeye odaklanıldığında haritanın geri kalanı */
+        .map-container:has(path:hover) svg {
+            filter: blur(4px);
+            transition-delay: 3s;
+        }
+
+        /* Hover edilen ülkenin blurdan etkilenmemesi için */
+        path:hover {
+            filter: blur(0) !important;
         }
 
         .title {
@@ -20,116 +71,16 @@
             margin-top: 20px;
             letter-spacing: 2px;
         }
-
-        /* Harita Konteynırı */
-        .map-container {
-            margin-top: 50px;
-            width: 60%;
-            max-width: 800px;
-            height: 450px; /* Sabit yükseklik zoom için önemli */
-            position: relative;
-            background-color: #1a1a1a; /* Deniz rengi: Açık siyah */
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            overflow: hidden; /* Dışarı taşan zoomu gizler */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        svg {
-            width: 100%;
-            height: 100%;
-            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.8s ease;
-            transform-origin: center;
-        }
-
-        path {
-            fill: #4a4a4a; /* Kara parçaları: Koyu gri */
-            stroke: #1a1a1a;
-            stroke-width: 0.5;
-            cursor: pointer;
-            transition: fill 0.3s ease;
-        }
-
-        /* Üstüne gelince anlık renk değişimi */
-        path:hover {
-            fill: #808080;
-        }
-
-        /* Blur Efekti */
-        .blurred {
-            filter: blur(5px) brightness(0.5);
-        }
-
-        /* Aktif zoomlanan ülke */
-        .active-path {
-            fill: #ffffff !important;
-        }
     </style>
 </head>
 <body>
 
     <h2 class="title">NE KADAR KALDI?</h2>
 
-    <div class="map-container" id="container">
-        <svg id="world-svg" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
-            <path d="M100,100 L300,100 L350,250 L150,280 Z" /> 
-            <path d="M450,150 L650,150 L680,350 L480,380 Z" /> 
-            <path d="M750,80 L920,100 L900,250 L780,220 Z" />
-        </svg>
+    <div class="map-container">
+        <svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+            <path d="M200,100 Q250,50 300,100 T400,150 L350,250 Z" /> <path d="M500,200 Q550,150 600,200 T700,250 L650,350 Z" /> <path d="M700,50 Q750,20 800,50 T900,100 L850,200 Z" /> </svg>
     </div>
-
-<script>
-    const svg = document.getElementById('world-svg');
-    const paths = document.querySelectorAll('path');
-    let zoomTimer;
-
-    paths.forEach(path => {
-        path.addEventListener('mouseenter', (e) => {
-            // 2 saniye bekleme süresini başlatıyoruz
-            zoomTimer = setTimeout(() => {
-                zoomInto(e.target);
-            }, 2000); 
-        });
-
-        path.addEventListener('mouseleave', () => {
-            // Fare 2 saniye dolmadan çekilirse işlemi iptal et
-            clearTimeout(zoomTimer);
-            resetZoom();
-        });
-    });
-
-    function zoomInto(element) {
-        const bbox = element.getBBox();
-        const svgBox = svg.viewBox.baseVal;
-
-        // Ülkenin merkez koordinatlarını bul
-        const centerX = bbox.x + bbox.width / 2;
-        const centerY = bbox.y + bbox.height / 2;
-
-        // Kutuyu kaplayacak büyüklük (Scale)
-        // Kutu 1000 birim genişlikte olduğu için oranlıyoruz
-        const scale = 3.5; 
-        
-        // Merkeze kaydırma hesaplaması
-        const moveX = (svgBox.width / 2) - (centerX * scale);
-        const moveY = (svgBox.height / 2) - (centerY * scale);
-
-        // SVG'ye zoom uygula
-        svg.style.transform = `translate(${moveX}px, ${moveY}px) scale(${scale})`;
-        
-        // Diğer her şeyi blurla, sadece seçileni parlat
-        svg.classList.add('blurred');
-        element.classList.add('active-path');
-    }
-
-    function resetZoom() {
-        svg.style.transform = `translate(0, 0) scale(1)`;
-        svg.classList.remove('blurred');
-        paths.forEach(p => p.classList.remove('active-path'));
-    }
-</script>
 
 </body>
 </html>
