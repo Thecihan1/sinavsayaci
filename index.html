@@ -149,3 +149,42 @@
                 if (!zoomContainer.classList.contains('active')) {
                     clearTimeout(hoverTimer);
                 }
+            });
+        });
+
+        // ZOOM EFEKTİNİ BAŞLAT
+        function activateZoom(countryPath) {
+            // 1. Arka planı bulanıklaştır (Başlık ve Ana Harita)
+            mainMapContainer.classList.add('blur-background');
+            title.classList.add('blur-background');
+
+            // 2. Hover edilen ülkenin SVG kopyasını al
+            const countryClone = countryPath.cloneNode(true);
+            
+            // 3. Zoom konteynırını temizle ve kopyayı ekle
+            zoomedCountrySvg.innerHTML = ''; // Önceki kopyayı sil
+            zoomedCountrySvg.appendChild(countryClone);
+
+            // 4. Zoom konteynırının viewBox'ını kopyalanan ülkeye göre ayarla (Netlik için)
+            // Bu kısım basit SVG'lerde çalışır, detaylı haritalarda viewBox'ı sabit tutmak daha iyidir.
+            // zoomedCountrySvg.setAttribute('viewBox', countryPath.ownerSVGElement.getAttribute('viewBox'));
+
+            // 5. Zoom konteynırını aktif et
+            zoomContainer.classList.add('active');
+        }
+
+        // ZOOM EFEKTİNİ KAPAT (Zoom konteynırına tıklayınca)
+        zoomContainer.addEventListener('click', () => {
+            // 1. Bulanıklığı kaldır
+            mainMapContainer.classList.remove('blur-background');
+            title.classList.remove('blur-background');
+
+            // 2. Zoom konteynırını gizle
+            zoomContainer.classList.remove('active');
+            
+            // 3. 3 saniyelik sayacı temizle (Tekrar hover olduğunda hemen başlamasın)
+            clearTimeout(hoverTimer);
+        });
+    </script>
+</body>
+</html>
