@@ -2,140 +2,132 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Interaktif Dünya Haritası</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nekadar Kaldı - Dünya Haritası</title>
     <style>
         body {
-            background-color: #0d0d0d;
-            display: flex;
-            justify-content: center;
             margin: 0;
-            padding-top: 50px;
+            padding: 0;
+            background-color: #0b0b0b;
             font-family: sans-serif;
-            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        /* Harita Kutusu: Orta-Üst, Çok Büyük Değil */
-        #map-container {
-            width: 800px;
-            height: 450px;
-            background-color: #1a1a1a; /* Denizler: Açık Siyah */
-            border-radius: 15px;
+        .title {
+            color: #eee;
+            margin-top: 20px;
+            letter-spacing: 2px;
+        }
+
+        /* Harita Konteynırı */
+        .map-container {
+            margin-top: 50px;
+            width: 60%;
+            max-width: 800px;
+            height: 450px; /* Sabit yükseklik zoom için önemli */
             position: relative;
-            overflow: hidden;
-            border: 1px solid #333;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            background-color: #1a1a1a; /* Deniz rengi: Açık siyah */
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden; /* Dışarı taşan zoomu gizler */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* Harita objesi */
-        #world-svg {
+        svg {
             width: 100%;
             height: 100%;
-            transition: transform 1.5s cubic-bezier(0.65, 0, 0.35, 1);
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.8s ease;
             transform-origin: center;
         }
 
-        /* Kara Parçaları: Açık Gri */
         path {
-            fill: #cccccc; 
-            stroke: #1a1a1a; /* Sınırlar deniz renginde */
-            stroke-width: 0.3;
+            fill: #4a4a4a; /* Kara parçaları: Koyu gri */
+            stroke: #1a1a1a;
+            stroke-width: 0.5;
             cursor: pointer;
-            transition: fill 0.4s, filter 1s, opacity 1s;
+            transition: fill 0.3s ease;
         }
 
-        /* Hover anında anlık tepki */
+        /* Üstüne gelince anlık renk değişimi */
         path:hover {
-            fill: #ffffff;
+            fill: #808080;
         }
 
-        /* Zoomlandığında diğerlerini bulanıklaştır */
-        .blur-effect {
-            filter: blur(3px) grayscale(80%);
-            opacity: 0.2;
+        /* Blur Efekti */
+        .blurred {
+            filter: blur(5px) brightness(0.5);
         }
 
-        /* Zoomlanan ülke */
-        .active-country {
-            filter: none !important;
-            opacity: 1 !important;
+        /* Aktif zoomlanan ülke */
+        .active-path {
             fill: #ffffff !important;
         }
     </style>
 </head>
 <body>
 
-<div id="map-container">
-    <svg id="world-svg" viewBox="0 0 1010 666" xmlns="http://www.w3.org/2000/svg">
-        <g id="map-layer"></g>
-    </svg>
-</div>
+    <h2 class="title">NE KADAR KALDI?</h2>
+
+    <div class="map-container" id="container">
+        <svg id="world-svg" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+            <path d="M100,100 L300,100 L350,250 L150,280 Z" /> 
+            <path d="M450,150 L650,150 L680,350 L480,380 Z" /> 
+            <path d="M750,80 L920,100 L900,250 L780,220 Z" />
+        </svg>
+    </div>
 
 <script>
     const svg = document.getElementById('world-svg');
-    const mapLayer = document.getElementById('map-layer');
-    let zoomTimeout;
+    const paths = document.querySelectorAll('path');
+    let zoomTimer;
 
-    // Gerçek dünya haritası verilerini (GeoJSON formatında) yüklüyoruz
-    fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson')
-        .then(response => response.json())
-        .then(data => {
-            // Harita koordinatlarını SVG path'lerine dönüştüren basit bir fonksiyon (Temsili basitleştirme)
-            // Not: GitHub Pages için en stabil ve hızlı yüklenen dünya path verisi budur.
-            drawMap(data);
+    paths.forEach(path => {
+        path.addEventListener('mouseenter', (e) => {
+            // 2 saniye bekleme süresini başlatıyoruz
+            zoomTimer = setTimeout(() => {
+                zoomInto(e.target);
+            }, 2000); 
         });
 
-    function drawMap(data) {
-        // Bu kısımda basitleştirilmiş bir path çizimi simüle edilir veya 
-        // hazır bir SVG path kütüphanesi kullanılır. 
-        // Senin için buraya doğrudan çalışan bir harita yapısı entegre ediyorum:
+        path.addEventListener('mouseleave', () => {
+            // Fare 2 saniye dolmadan çekilirse işlemi iptal et
+            clearTimeout(zoomTimer);
+            resetZoom();
+        });
+    });
+
+    function zoomInto(element) {
+        const bbox = element.getBBox();
+        const svgBox = svg.viewBox.baseVal;
+
+        // Ülkenin merkez koordinatlarını bul
+        const centerX = bbox.x + bbox.width / 2;
+        const centerY = bbox.y + bbox.height / 2;
+
+        // Kutuyu kaplayacak büyüklük (Scale)
+        // Kutu 1000 birim genişlikte olduğu için oranlıyoruz
+        const scale = 3.5; 
         
-        const countries = [
-            {name: "Russia", d: "M600,100 L800,80 L900,150 L850,250 L600,200 Z"},
-            {name: "Africa", d: "M480,320 L580,320 L620,480 L500,550 L450,450 Z"},
-            {name: "N. America", d: "M100,100 L300,80 L350,250 L150,280 Z"},
-            {name: "S. America", d: "M280,320 L380,350 L330,550 L250,500 Z"},
-            {name: "Australia", d: "M800,450 L950,450 L920,550 L820,550 Z"},
-            {name: "Europe/Asia", d: "M450,150 L600,150 L650,300 L450,300 Z"}
-        ];
+        // Merkeze kaydırma hesaplaması
+        const moveX = (svgBox.width / 2) - (centerX * scale);
+        const moveY = (svgBox.height / 2) - (centerY * scale);
 
-        // Daha profesyonel görünüm için harita path'lerini buraya manuel ekleyebilirsin 
-        // ama sistemi test etmen için ana kıtaları yerleştirdim.
-
-        countries.forEach(country => {
-            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            path.setAttribute("d", country.d);
-            path.addEventListener('mouseenter', (e) => startZoomTimer(e.target));
-            path.addEventListener('mouseleave', () => cancelZoom());
-            mapLayer.appendChild(path);
-        });
+        // SVG'ye zoom uygula
+        svg.style.transform = `translate(${moveX}px, ${moveY}px) scale(${scale})`;
+        
+        // Diğer her şeyi blurla, sadece seçileni parlat
+        svg.classList.add('blurred');
+        element.classList.add('active-path');
     }
 
-    function startZoomTimer(element) {
-        zoomTimeout = setTimeout(() => {
-            const bbox = element.getBBox();
-            const centerX = bbox.x + bbox.width / 2;
-            const centerY = bbox.y + bbox.height / 2;
-            
-            // Zoom ve Fokus
-            const scale = 3.5;
-            const moveX = 505 - (centerX * scale);
-            const moveY = 333 - (centerY * scale);
-
-            svg.style.transform = `translate(${moveX}px, ${moveY}px) scale(${scale})`;
-            
-            document.querySelectorAll('path').forEach(p => {
-                if(p !== element) p.classList.add('blur-effect');
-                else p.classList.add('active-country');
-            });
-        }, 2000); // 2 saniye bekleme kuralı
-    }
-
-    function cancelZoom() {
-        clearTimeout(zoomTimeout);
-        svg.style.transform = `translate(0,0) scale(1)`;
-        document.querySelectorAll('path').forEach(p => {
-            p.classList.remove('blur-effect', 'active-country');
-        });
+    function resetZoom() {
+        svg.style.transform = `translate(0, 0) scale(1)`;
+        svg.classList.remove('blurred');
+        paths.forEach(p => p.classList.remove('active-path'));
     }
 </script>
 
