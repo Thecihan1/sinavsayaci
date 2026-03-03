@@ -3,92 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İnteraktif Dünya Haritası</title>
-    <!-- D3.js ve TopoJSON kütüphanelerini CDN üzerinden çekiyoruz -->
+    <title>Dünya Haritası - Tüm Ülkeler</title>
+    <!-- D3.js ve TopoJSON kütüphaneleri -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/topojson-client@3"></script>
     
     <style>
         body {
             margin: 0;
-            background-color: #050505; /* Sayfa arka planı çok koyu */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
+            padding: 0;
+            background-color: #000000; /* Sayfa arka planı tam siyah */
             font-family: sans-serif;
+            overflow: hidden; /* Kaydırma çubuklarını gizle */
         }
 
-        #map-container {
+        /* Harita Konteyneri - Orta Üst Konum */
+        #map-wrapper {
+            width: 100%;
+            height: 80vh; /* Ekranın %80'ini kaplasın */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Üstten hizala */
+            padding-top: 5vh; /* Üstten biraz boşluk bırak */
+            position: relative;
+        }
+
+        /* Harita SVG */
+        svg {
             width: 100%;
             height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            max-width: 1400px; /* Çok geniş ekranlarda taşmasın */
         }
 
-        /* Harita üzerindeki ülkelerin stili */
+        /* Ülkelerin stili */
         path {
             fill: #333333; /* Kara parçaları: Koyu Gri */
-            stroke: #000000; /* Ülke sınırları: Siyah */
+            stroke: #000000; /* Sınırlar: Siyah */
             stroke-width: 0.5px;
-            transition: fill 0.3s, transform 0.3s; /* Yumuşak geçişler */
+            transition: fill 0.3s ease, transform 0.3s ease;
             cursor: pointer;
         }
 
-        /* Mouse üzerine gelince (Hover) */
+        /* Üzerine gelince (Hover) */
         path:hover {
             fill: #555555; /* Hafif açılan gri */
-            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
         }
 
-        /* Zoom yapıldığında arka planın durumu */
-        .zoomed-bg {
+        /* Arka plan (Sular) */
+        .ocean {
             fill: #111111; /* Sular: Açık Siyah / Koyu Gri */
         }
     </style>
 </head>
 <body>
 
-    <div id="map-container"></div>
+    <div id="map-wrapper">
+        <svg id="world-map" viewBox="0 0 960 500" preserveAspectRatio="xMidYMid meet">
+            <!-- Arka plan okyanus -->
+            <rect class="ocean" width="100%" height="100%" />
+            <!-- Ülkeler buraya çizilecek -->
+            <g id="countries"></g>
+        </svg>
+    </div>
 
     <script>
-        // 1. Harita Ayarları
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        const svg = d3.select("#map-container").append("svg")
-            .attr("width", width)
-            .attr("height", height)
-            .attr("viewBox", `0 0 ${width} ${height}`);
+        // 1. Ayarlar
+        const width = 960;
+        const height = 500;
+        const svg = d3.select("#world-map");
+        const g = svg.select("#countries");
 
-        // 2. Zoom ve Pan (Kaydırma) Ayarları
+        // 2. Zoom Ayarları
         const zoom = d3.zoom()
-            .scaleExtent([1, 8]) // Minimum ve maksimum zoom seviyesi
+            .scaleExtent([1, 10]) // Zoom seviyesi (1x ile 10x arası)
             .on("zoom", (event) => {
                 g.attr("transform", event.transform);
             });
 
         svg.call(zoom);
 
-        // Haritayı çizmek için bir grup (group) oluşturuyoruz
-        const g = svg.append("g");
-
-        // 3. Harita Verisini Çekme ve Projeksiyon
-        // D3 Geo Mercator projeksiyonu kullanıyoruz
+        // 3. Projeksiyon (Harita Görünümü)
+        // Mercator projeksiyonu kullanıyoruz.
         const projection = d3.geoMercator()
-            .center([0, 20]) // Haritayı dikey olarak biraz yukarı kaydır
-            .scale(width / 5.5) // Ekran genişliğine göre ölçek
-            .translate([width / 2, height / 2]);
+            .center([0, 20]) // Enlem/Boylam merkezi (Dünyayı ortalamak için)
+            .scale(width / 2.5) // Harita ölçeği
+            .translate([width / 2, height / 2]); // Haritayı merkeze taşı
 
-        // 4. TopoJSON Verisini Yükle
-        // Dünyanın topoğrafik verisini buradan çekiyoruz.
+        // 4. Harita Verisini Yükle (Tüm Ülkeler İçin)
+        // world-atlas kütüphanesinden 110m çözünürlükte ülke verisi çekiyoruz.
+        // Bu veri seti dünyadaki neredeyse tüm tanınmış ülkeleri içerir.
         d3.json("https://unpkg.com/world-atlas@2.0.2/countries-110m.json").then(world => {
             
-            // TopoJSON'u GeoJSON'a çeviriyoruz
+            // TopoJSON'u GeoJSON'a çevir
             const countries = topojson.feature(world, world.objects.countries).features;
 
-            // 5. Haritayı Çizme
+            // 5. Ülkeleri Çiz
             g.selectAll("path")
                 .data(countries)
                 .enter().append("path")
@@ -96,12 +106,12 @@
                 .attr("class", "country");
 
             // 6. İnteraktif Özellikler (Mouse Bekleme ve Zoom)
-            const hoverTimeout = 2000; // 2 saniye (2000 ms)
+            const hoverTimeout = 2000; // 2 saniye
             let timer = null;
 
             g.selectAll("path")
                 .on("mouseenter", function(event, d) {
-                    // Mouse üzerine gelince hemen biraz büyüt
+                    // Mouse üzerine gelince hafif büyüt
                     d3.select(this)
                         .transition()
                         .duration(200)
@@ -119,31 +129,29 @@
                         .duration(200)
                         .attr("transform", "scale(1)");
 
-                    // Sayacı iptal et (yeni bir ülke üzerine gelince de iptal edilmeli)
+                    // Sayacı iptal et (yeni bir ülkeye geçilirse veya çıkarsa)
                     clearTimeout(timer);
                 });
 
             // 7. Zoom Fonksiyonu
             function zoomToCountry(feature) {
-                // Ülkenin merkezini (centroid) bul
+                // Ülkenin merkezini bul
                 const centroid = d3.geoCentroid(feature);
-                
-                // Projeksiyona göre koordinatları hesapla
                 const [x, y] = projection(centroid);
 
-                // Zoom yap
+                // Zoom yap (1 saniye sürede yumuşak geçiş)
                 svg.transition()
-                    .duration(1000) // 1 saniye sürede zoom yap
+                    .duration(1000)
                     .call(
                         zoom.transform, 
-                        d3.zoomIdentity.translate(width / 2, height / 2).scale(3).translate(-x, -y)
+                        d3.zoomIdentity.translate(width / 2, height / 2).scale(4).translate(-x, -y)
                     );
             }
         });
 
-        // Pencere boyutu değişirse haritayı güncelle
+        // Pencere boyutu değişirse haritayı yeniden boyutlandır
         window.addEventListener('resize', () => {
-            // Basit bir yenileme (Gerçek projede daha detaylı hesaplanmalı)
+            // Basit bir yenileme ile güncelleme
             location.reload(); 
         });
 
