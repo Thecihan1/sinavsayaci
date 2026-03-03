@@ -3,158 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dünya Haritası - Tüm Ülkeler</title>
-    <!-- D3.js ve TopoJSON kütüphaneleri -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://unpkg.com/topojson-client@3"></script>
-    
+    <title>Sayaç Merkezi - Profesyonel Panel</title>
     <style>
+        :root {
+            --mat-black: #121212;
+            --light-gray: #1e1e1e;
+            --accent: #ffffff;
+            --text: #e0e0e0;
+        }
+
         body {
             margin: 0;
             padding: 0;
-            background-color: #000000; /* Sayfa arka planı tam siyah */
-            font-family: sans-serif;
-            overflow: hidden; /* Kaydırma çubuklarını gizle */
+            font-family: 'Inter', sans-serif;
+            background-color: #080808;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: var(--text);
+            transition: background 0.5s ease;
         }
 
-        /* Harita Konteyneri - Orta Üst Konum */
-        #map-wrapper {
-            width: 100%;
-            height: 80vh; /* Ekranın %80'ini kaplasın */
+        /* --- YÖNETİM PANELİ (ADMİN) --- */
+        #admin-panel {
+            background: rgba(18, 18, 18, 0.95);
+            padding: 20px;
+            border-bottom: 1px solid #333;
             display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
             justify-content: center;
-            align-items: flex-start; /* Üstten hizala */
-            padding-top: 5vh; /* Üstten biraz boşluk bırak */
+            backdrop-filter: blur(10px);
+        }
+
+        input, button {
+            background: var(--light-gray);
+            border: 1px solid #444;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        button {
+            cursor: pointer;
+            background: #fff;
+            color: #000;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover { background: #ccc; }
+
+        /* --- SAYAÇ KUTUCUKLARI --- */
+        #counter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 50px 10%;
+        }
+
+        .counter-card {
+            background: rgba(20, 20, 20, 0.85); /* Mat Siyah */
+            border: 1px solid #2a2a2a;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
             position: relative;
         }
 
-        /* Harita SVG */
-        svg {
-            width: 100%;
-            height: 100%;
-            max-width: 1400px; /* Çok geniş ekranlarda taşmasın */
+        .counter-card h3 {
+            margin-top: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 1.1rem;
+            color: #fff;
         }
 
-        /* Ülkelerin stili */
-        path {
-            fill: #333333; /* Kara parçaları: Koyu Gri */
-            stroke: #000000; /* Sınırlar: Siyah */
-            stroke-width: 0.5px;
-            transition: fill 0.3s ease, transform 0.3s ease;
+        .timer-unit {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .unit {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .unit span:first-child {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .unit span:last-child {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #ff4444;
+            font-size: 12px;
             cursor: pointer;
         }
 
-        /* Üzerine gelince (Hover) */
-        path:hover {
-            fill: #555555; /* Hafif açılan gri */
-            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
-        }
-
-        /* Arka plan (Sular) */
-        .ocean {
-            fill: #111111; /* Sular: Açık Siyah / Koyu Gri */
+        /* Arka Plan Scripti Kısmı */
+        .bg-loader {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
 
-    <div id="map-wrapper">
-        <svg id="world-map" viewBox="0 0 960 500" preserveAspectRatio="xMidYMid meet">
-            <!-- Arka plan okyanus -->
-            <rect class="ocean" width="100%" height="100%" />
-            <!-- Ülkeler buraya çizilecek -->
-            <g id="countries"></g>
-        </svg>
+    <div id="admin-panel">
+        <input type="text" id="event-name" placeholder="Etkinlik Adı (Örn: Yılbaşı)">
+        <input type="datetime-local" id="event-date">
+        <button onclick="addCounter()">Sayaç Ekle</button>
+        
+        <div class="bg-loader">
+            <span>Arka Plan Yükle:</span>
+            <input type="file" id="bg-upload" accept="image/*" onchange="changeBackground(event)">
+        </div>
     </div>
 
+    <div id="counter-grid"></div>
+
     <script>
-        // 1. Ayarlar
-        const width = 960;
-        const height = 500;
-        const svg = d3.select("#world-map");
-        const g = svg.select("#countries");
+        let counters = JSON.parse(localStorage.getItem('myCounters')) || [];
 
-        // 2. Zoom Ayarları
-        const zoom = d3.zoom()
-            .scaleExtent([1, 10]) // Zoom seviyesi (1x ile 10x arası)
-            .on("zoom", (event) => {
-                g.attr("transform", event.transform);
+        // Sayfayı Başlat
+        function init() {
+            renderCounters();
+            setInterval(updateAllTimers, 1000);
+            const savedBg = localStorage.getItem('siteBg');
+            if(savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
+        }
+
+        // Sayaç Ekle
+        function addCounter() {
+            const name = document.getElementById('event-name').value;
+            const date = document.getElementById('event-date').value;
+
+            if(!name || !date) return alert("Lütfen tüm alanları doldur!");
+
+            const newCounter = {
+                id: Date.now(),
+                name: name,
+                target: new Date(date).getTime()
+            };
+
+            counters.push(newCounter);
+            saveAndRender();
+        }
+
+        // Sayaç Sil
+        function deleteCounter(id) {
+            counters = counters.filter(c => c.id !== id);
+            saveAndRender();
+        }
+
+        // Verileri Kaydet ve Çiz
+        function saveAndRender() {
+            localStorage.setItem('myCounters', JSON.stringify(counters));
+            renderCounters();
+        }
+
+        function renderCounters() {
+            const grid = document.getElementById('counter-grid');
+            grid.innerHTML = "";
+
+            counters.forEach(c => {
+                grid.innerHTML += `
+                    <div class="counter-card" id="card-${c.id}">
+                        <button class="delete-btn" onclick="deleteCounter(${c.id})">Kaldır</button>
+                        <h3>${c.name}</h3>
+                        <div class="timer-unit" id="timer-${c.id}">
+                            <div class="unit"><span class="d">00</span><span>Gün</span></div>
+                            <div class="unit"><span class="h">00</span><span>Saat</span></div>
+                            <div class="unit"><span class="m">00</span><span>Dak</span></div>
+                            <div class="unit"><span class="s">00</span><span>Sn</span></div>
+                        </div>
+                    </div>
+                `;
             });
+        }
 
-        svg.call(zoom);
+        // Zamanı Güncelle
+        function updateAllTimers() {
+            counters.forEach(c => {
+                const now = new Date().getTime();
+                const diff = c.target - now;
 
-        // 3. Projeksiyon (Harita Görünümü)
-        // Mercator projeksiyonu kullanıyoruz.
-        const projection = d3.geoMercator()
-            .center([0, 20]) // Enlem/Boylam merkezi (Dünyayı ortalamak için)
-            .scale(width / 2.5) // Harita ölçeği
-            .translate([width / 2, height / 2]); // Haritayı merkeze taşı
+                if (diff > 0) {
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const secs = Math.floor((diff % (1000 * 60)) / 1000);
 
-        // 4. Harita Verisini Yükle (Tüm Ülkeler İçin)
-        // world-atlas kütüphanesinden 110m çözünürlükte ülke verisi çekiyoruz.
-        // Bu veri seti dünyadaki neredeyse tüm tanınmış ülkeleri içerir.
-        d3.json("https://unpkg.com/world-atlas@2.0.2/countries-110m.json").then(world => {
-            
-            // TopoJSON'u GeoJSON'a çevir
-            const countries = topojson.feature(world, world.objects.countries).features;
+                    const el = document.getElementById(`timer-${c.id}`);
+                    if(el) {
+                        el.querySelector('.d').innerText = days;
+                        el.querySelector('.h').innerText = hours;
+                        el.querySelector('.m').innerText = mins;
+                        el.querySelector('.s').innerText = secs;
+                    }
+                }
+            });
+        }
 
-            // 5. Ülkeleri Çiz
-            g.selectAll("path")
-                .data(countries)
-                .enter().append("path")
-                .attr("d", d3.geoPath().projection(projection))
-                .attr("class", "country");
-
-            // 6. İnteraktif Özellikler (Mouse Bekleme ve Zoom)
-            const hoverTimeout = 2000; // 2 saniye
-            let timer = null;
-
-            g.selectAll("path")
-                .on("mouseenter", function(event, d) {
-                    // Mouse üzerine gelince hafif büyüt
-                    d3.select(this)
-                        .transition()
-                        .duration(200)
-                        .attr("transform", "scale(1.02)");
-
-                    // 2 saniyelik sayacı başlat
-                    timer = setTimeout(() => {
-                        zoomToCountry(d);
-                    }, hoverTimeout);
-                })
-                .on("mouseleave", function() {
-                    // Mouse çıkarsa büyümeyi geri al
-                    d3.select(this)
-                        .transition()
-                        .duration(200)
-                        .attr("transform", "scale(1)");
-
-                    // Sayacı iptal et (yeni bir ülkeye geçilirse veya çıkarsa)
-                    clearTimeout(timer);
-                });
-
-            // 7. Zoom Fonksiyonu
-            function zoomToCountry(feature) {
-                // Ülkenin merkezini bul
-                const centroid = d3.geoCentroid(feature);
-                const [x, y] = projection(centroid);
-
-                // Zoom yap (1 saniye sürede yumuşak geçiş)
-                svg.transition()
-                    .duration(1000)
-                    .call(
-                        zoom.transform, 
-                        d3.zoomIdentity.translate(width / 2, height / 2).scale(4).translate(-x, -y)
-                    );
+        // Arka Plan Değiştirme Scripti
+        function changeBackground(event) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const url = reader.result;
+                document.body.style.backgroundImage = `url(${url})`;
+                localStorage.setItem('siteBg', url);
             }
-        });
+            reader.readAsDataURL(event.target.files[0]);
+        }
 
-        // Pencere boyutu değişirse haritayı yeniden boyutlandır
-        window.addEventListener('resize', () => {
-            // Basit bir yenileme ile güncelleme
-            location.reload(); 
-        });
-
+        init();
     </script>
 </body>
 </html>
