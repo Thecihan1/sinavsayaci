@@ -6,111 +6,99 @@
     <style>
         body {
             margin: 0;
-            background-color: #0b0b0b; /* Çok koyu arka plan */
+            background-color: #0b0b0b;
             display: flex;
             flex-direction: column;
             align-items: center;
-            font-family: 'Inter', sans-serif;
+            font-family: sans-serif;
             color: #eee;
-            overflow-x: hidden;
         }
 
-        .title { margin-top: 40px; letter-spacing: 4px; font-weight: bold; text-transform: uppercase; }
+        .title { margin-top: 30px; letter-spacing: 3px; }
 
-        /* Harita Kutusu: Orta-Üst, Sabit Boyut */
-        #map-container {
-            margin-top: 30px;
+        /* Harita Kutusu: Boyutlar sabit, taşmalar gizli */
+        .map-container {
+            margin-top: 40px;
             width: 800px; 
             height: 450px;
-            background-color: #151515; /* Deniz Rengi: Açık Siyah */
+            background-color: #1a1a1a; /* Deniz Rengi: Açık Siyah */
             border-radius: 12px;
             overflow: hidden;
             position: relative;
-            border: 1px solid #2a2a2a;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            border: 1px solid #333;
+        }
+
+        /* Katman yapısı: Zoom bu div üzerinden yapılacak */
+        #zoom-layer {
+            width: 100%;
+            height: 100%;
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: 0 0; /* Sol üstten referans alıp JS ile hesaplayacağız */
         }
 
         svg {
             width: 100%;
             height: 100%;
-            /* Viewbox animasyonu için transition */
-            transition: all 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+            display: block;
         }
 
         /* Kara Parçaları: Açık Gri */
         path {
-            fill: #555555;
-            stroke: #151515;
-            stroke-width: 0.5;
+            fill: #4a4a4a;
+            stroke: #1a1a1a;
+            stroke-width: 0.4;
+            transition: fill 0.3s ease, filter 0.8s ease, opacity 0.8s ease;
             cursor: pointer;
-            transition: fill 0.4s ease, filter 0.8s ease, opacity 0.8s ease;
         }
 
-        path:hover {
-            fill: #999999; /* Üstüne gelince hafif parlar */
-        }
+        path:hover { fill: #888; }
 
-        /* Zoom anında diğer ülkeler */
-        .blur-others {
-            filter: blur(6px) grayscale(1);
-            opacity: 0.15;
-        }
-
-        /* Odaklanan ülke */
-        .focused {
-            fill: #ffffff !important;
-            filter: none !important;
-            opacity: 1 !important;
-            stroke: #fff;
-            stroke-width: 0.2;
-        }
+        /* Efektler */
+        .blurred { filter: blur(4px); opacity: 0.2; }
+        .focused { fill: #ffffff !important; filter: none !important; opacity: 1 !important; }
     </style>
 </head>
 <body>
 
     <h2 class="title">NE KADAR KALDI?</h2>
 
-    <div id="map-container">
-        <svg id="worldMap" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
-            <g id="map-g"></g>
-        </svg>
+    <div class="map-container">
+        <div id="zoom-layer">
+            <svg id="worldMap" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice">
+                <g id="countries-group"></g>
+            </svg>
+        </div>
     </div>
 
 <script>
-    const svg = document.getElementById('worldMap');
-    const group = document.getElementById('map-g');
+    const group = document.getElementById('countries-group');
+    const zoomLayer = document.getElementById('zoom-layer');
     let zoomTimer;
-    const originalViewBox = "0 0 1000 500";
 
-    // Gerçek harita verisini çekiyoruz
+    // Harita verisini çek ve çiz
     fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson')
         .then(res => res.json())
-        .then(data => {
-            data.features.forEach(feature => {
+        .then(geoData => {
+            geoData.features.forEach(feature => {
                 const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                path.setAttribute("d", generatePath(feature));
+                path.setAttribute("d", createPath(feature));
                 
                 path.addEventListener('mouseenter', () => {
-                    // 2 saniye kuralı
-                    zoomTimer = setTimeout(() => zoomTo(path), 2000);
+                    zoomTimer = setTimeout(() => zoomToCountry(path), 2000);
                 });
-
                 path.addEventListener('mouseleave', () => {
                     clearTimeout(zoomTimer);
                     resetZoom();
                 });
-
                 group.appendChild(path);
             });
         });
 
-    function generatePath(feature) {
+    function createPath(feature) {
         let d = "";
-        const type = feature.geometry.type;
-        const coords = type === "MultiPolygon" ? feature.geometry.coordinates : [feature.geometry.coordinates];
-        
+        const coords = feature.geometry.type === "MultiPolygon" ? feature.geometry.coordinates : [feature.geometry.coordinates];
         coords.forEach(poly => {
-            const ring = type === "MultiPolygon" ? poly[0] : poly;
+            const ring = feature.geometry.type === "MultiPolygon" ? poly[0] : poly;
             ring.forEach((c, i) => {
                 const x = (c[0] + 180) * (1000 / 360);
                 const y = (90 - c[1]) * (500 / 180);
@@ -121,34 +109,37 @@
         return d;
     }
 
-    function zoomTo(el) {
+    function zoomToCountry(el) {
         const bbox = el.getBBox();
-        
-        // Ülkeyi merkeze alacak yeni viewBox değerleri
-        // Padding ekleyerek ülkenin kenarlara yapışmasını engelliyoruz
-        const padding = 20;
-        const width = bbox.width + padding * 2;
-        const height = bbox.height + padding * 2;
-        const x = bbox.x - padding;
-        const y = bbox.y - padding;
+        const containerWidth = 800;
+        const containerHeight = 450;
 
-        // ViewBox'ı güncelle (Kamerayı odakla)
-        svg.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
+        // Ülke merkezini bul
+        const centerX = bbox.x + bbox.width / 2;
+        const centerY = bbox.y + bbox.height / 2;
+
+        // Zoom ölçeği (Sabit 4 kat büyüme veya ülke boyutuna göre dinamik)
+        const scale = 4;
+
+        // Zoom katmanını merkeze göre kaydır
+        const tx = (containerWidth / 2) - (centerX * scale);
+        const ty = (containerHeight / 2) - (centerY * scale);
+
+        zoomLayer.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
         
-        // Görsel efektleri uygula
+        // Blur ve Fokus
         document.querySelectorAll('path').forEach(p => {
             if(p === el) p.classList.add('focused');
-            else p.classList.add('blur-others');
+            else p.classList.add('blurred');
         });
     }
 
     function resetZoom() {
-        svg.setAttribute("viewBox", originalViewBox);
+        zoomLayer.style.transform = "translate(0,0) scale(1)";
         document.querySelectorAll('path').forEach(p => {
-            p.classList.remove('focused', 'blur-others');
+            p.classList.remove('focused', 'blurred');
         });
     }
 </script>
-
 </body>
 </html>
