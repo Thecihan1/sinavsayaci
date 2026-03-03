@@ -3,238 +3,470 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sayaç Merkezi - Profesyonel Panel</title>
+    <title>Özel Sayaç ve Panel</title>
     <style>
         :root {
-            --mat-black: #121212;
-            --light-gray: #1e1e1e;
-            --accent: #ffffff;
-            --text: #e0e0e0;
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 20, 0.9);
+            --text-color: #ffffff;
+            --accent-color: #ff4757;
+            --border-color: #333;
         }
 
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: #080808;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
-            color: var(--text);
-            transition: background 0.5s ease;
-        }
-
-        /* --- YÖNETİM PANELİ (ADMİN) --- */
-        #admin-panel {
-            background: rgba(18, 18, 18, 0.95);
-            padding: 20px;
-            border-bottom: 1px solid #333;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
-            backdrop-filter: blur(10px);
-        }
-
-        input, button {
-            background: var(--light-gray);
-            border: 1px solid #444;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            outline: none;
-        }
-
-        button {
-            cursor: pointer;
-            background: #fff;
-            color: #000;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-
-        button:hover { background: #ccc; }
-
-        /* --- SAYAÇ KUTUCUKLARI --- */
-        #counter-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 30px;
-            padding: 50px 10%;
-        }
-
-        .counter-card {
-            background: rgba(20, 20, 20, 0.85); /* Mat Siyah */
-            border: 1px solid #2a2a2a;
-            border-radius: 15px;
-            padding: 25px;
-            text-align: center;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
-            position: relative;
-        }
-
-        .counter-card h3 {
-            margin-top: 0;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-size: 1.1rem;
-            color: #fff;
-        }
-
-        .timer-unit {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .unit {
+            color: var(--text-color);
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
+            align-items: center;
         }
 
-        .unit span:first-child {
+        /* Arka plan karartma katmanı */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6); /* Görseli karartır */
+            z-index: -1;
+        }
+
+        h1 {
+            margin-top: 50px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        /* Sayaç Kutucukları */
+        .countdown-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .timer-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            width: 250px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            transition: transform 0.3s ease;
+        }
+
+        .timer-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-color);
+        }
+
+        .event-name {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #ddd;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .timer-display {
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .time-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .time-value {
             font-size: 2rem;
             font-weight: bold;
+            color: var(--accent-color);
         }
 
-        .unit span:last-child {
-            font-size: 0.7rem;
+        .time-label {
+            font-size: 0.8rem;
             color: #888;
             text-transform: uppercase;
         }
 
         .delete-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
+            margin-top: 15px;
+            background: transparent;
+            border: 1px solid #555;
+            color: #888;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .delete-btn:hover {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        /* Panel Butonu */
+        .panel-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--accent-color);
+            color: white;
             border: none;
-            color: #ff4444;
-            font-size: 12px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        /* Panel Tasarımı */
+        .admin-panel {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 350px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            z-index: 999;
+            display: none; /* Başlangıçta gizli */
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .admin-panel.active {
+            display: block;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            color: #ccc;
+        }
+
+        input[type="text"], input[type="datetime-local"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #000;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        button.action-btn {
+            width: 100%;
+            padding: 10px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button.action-btn:hover {
+            background: #444;
+        }
+
+        button.primary-btn {
+            background: var(--accent-color);
+        }
+
+        button.primary-btn:hover {
+            background: #ff6b81;
+        }
+
+        /* Görsel Yükleme Alanı */
+        .image-upload {
+            border: 2px dashed #444;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .image-upload:hover {
+            border-color: var(--accent-color);
+        }
+
+        .image-upload input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
             cursor: pointer;
         }
 
-        /* Arka Plan Scripti Kısmı */
-        .bg-loader {
+        .gallery {
             display: flex;
-            align-items: center;
+            flex-wrap: wrap;
             gap: 10px;
-            font-size: 14px;
         }
+
+        .gallery-item {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border: 2px solid transparent;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .gallery-item.selected {
+            border-color: var(--accent-color);
+        }
+
+        .empty-msg {
+            color: #666;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 10px;
+        }
+
     </style>
 </head>
 <body>
 
-    <div id="admin-panel">
-        <input type="text" id="event-name" placeholder="Etkinlik Adı (Örn: Yılbaşı)">
-        <input type="datetime-local" id="event-date">
-        <button onclick="addCounter()">Sayaç Ekle</button>
-        
-        <div class="bg-loader">
-            <span>Arka Plan Yükle:</span>
-            <input type="file" id="bg-upload" accept="image/*" onchange="changeBackground(event)">
+    <h1>Önemli Günler Sayaç</h1>
+
+    <div class="countdown-container" id="countdowns">
+        <!-- Sayaçlar buraya JavaScript ile eklenecek -->
+    </div>
+
+    <!-- Panel Açma Butonu -->
+    <button class="panel-toggle" onclick="togglePanel()">⚙️</button>
+
+    <!-- Yönetim Paneli -->
+    <div class="admin-panel" id="adminPanel">
+        <div class="panel-header">
+            <h3>Yönetim Paneli</h3>
+            <button onclick="togglePanel()" style="background:none; border:none; color:white; cursor:pointer;">✖</button>
+        </div>
+
+        <!-- Yeni Sayaç Ekleme -->
+        <div class="panel-section">
+            <div class="panel-title">Yeni Sayaç Ekle</div>
+            <input type="text" id="eventName" placeholder="Etkinlik Adı (Örn: Doğum Günü)">
+            <input type="datetime-local" id="eventDate">
+            <button class="action-btn primary-btn" onclick="addTimer()">Sayaç Ekle</button>
+        </div>
+
+        <!-- Arka Plan Yönetimi -->
+        <div class="panel-section">
+            <div class="panel-title">Arka Plan Görseli</div>
+            <div class="image-upload">
+                <p>Görsel Yükle</p>
+                <input type="file" id="bgImageInput" accept="image/*" onchange="handleImageUpload(this)">
+            </div>
+            <div class="panel-title">Galeri (Tıkla Seç)</div>
+            <div class="gallery" id="gallery">
+                <div class="empty-msg">Henüz görsel yok</div>
+            </div>
         </div>
     </div>
 
-    <div id="counter-grid"></div>
-
     <script>
-        let counters = JSON.parse(localStorage.getItem('myCounters')) || [];
+        // --- VERİ YÖNETİMİ (LocalStorage) ---
+        let timers = JSON.parse(localStorage.getItem('myTimers')) || [];
+        let backgrounds = JSON.parse(localStorage.getItem('myBackgrounds')) || [];
+        let currentBackground = localStorage.getItem('currentBackground') || null;
 
-        // Sayfayı Başlat
-        function init() {
-            renderCounters();
-            setInterval(updateAllTimers, 1000);
-            const savedBg = localStorage.getItem('siteBg');
-            if(savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
-        }
+        // --- SAYAÇ MANTIĞI ---
+        function renderTimers() {
+            const container = document.getElementById('countdowns');
+            container.innerHTML = '';
 
-        // Sayaç Ekle
-        function addCounter() {
-            const name = document.getElementById('event-name').value;
-            const date = document.getElementById('event-date').value;
+            if (timers.length === 0) {
+                container.innerHTML = '<p style="color:#666; text-align:center; width:100%;">Henüz eklenmiş bir sayaç yok. Paneli açarak ekle.</p>';
+                return;
+            }
 
-            if(!name || !date) return alert("Lütfen tüm alanları doldur!");
-
-            const newCounter = {
-                id: Date.now(),
-                name: name,
-                target: new Date(date).getTime()
-            };
-
-            counters.push(newCounter);
-            saveAndRender();
-        }
-
-        // Sayaç Sil
-        function deleteCounter(id) {
-            counters = counters.filter(c => c.id !== id);
-            saveAndRender();
-        }
-
-        // Verileri Kaydet ve Çiz
-        function saveAndRender() {
-            localStorage.setItem('myCounters', JSON.stringify(counters));
-            renderCounters();
-        }
-
-        function renderCounters() {
-            const grid = document.getElementById('counter-grid');
-            grid.innerHTML = "";
-
-            counters.forEach(c => {
-                grid.innerHTML += `
-                    <div class="counter-card" id="card-${c.id}">
-                        <button class="delete-btn" onclick="deleteCounter(${c.id})">Kaldır</button>
-                        <h3>${c.name}</h3>
-                        <div class="timer-unit" id="timer-${c.id}">
-                            <div class="unit"><span class="d">00</span><span>Gün</span></div>
-                            <div class="unit"><span class="h">00</span><span>Saat</span></div>
-                            <div class="unit"><span class="m">00</span><span>Dak</span></div>
-                            <div class="unit"><span class="s">00</span><span>Sn</span></div>
+            timers.forEach((timer, index) => {
+                const card = document.createElement('div');
+                card.className = 'timer-card';
+                card.innerHTML = `
+                    <div class="event-name">${timer.name}</div>
+                    <div class="timer-display">
+                        <div class="time-unit">
+                            <span class="time-value" id="days-${index}">00</span>
+                            <span class="time-label">Gün</span>
+                        </div>
+                        <div class="time-unit">
+                            <span class="time-value" id="hours-${index}">00</span>
+                            <span class="time-label">Saat</span>
+                        </div>
+                        <div class="time-unit">
+                            <span class="time-value" id="minutes-${index}">00</span>
+                            <span class="time-label">Dakika</span>
+                        </div>
+                        <div class="time-unit">
+                            <span class="time-value" id="seconds-${index}">00</span>
+                            <span class="time-label">Saniye</span>
                         </div>
                     </div>
+                    <button class="delete-btn" onclick="deleteTimer(${index})">Sil</button>
                 `;
+                container.appendChild(card);
             });
         }
 
-        // Zamanı Güncelle
-        function updateAllTimers() {
-            counters.forEach(c => {
-                const now = new Date().getTime();
-                const diff = c.target - now;
+        function updateCountdowns() {
+            const now = new Date().getTime();
 
-                if (diff > 0) {
-                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+            timers.forEach((timer, index) => {
+                const target = new Date(timer.date).getTime();
+                const distance = target - now;
 
-                    const el = document.getElementById(`timer-${c.id}`);
-                    if(el) {
-                        el.querySelector('.d').innerText = days;
-                        el.querySelector('.h').innerText = hours;
-                        el.querySelector('.m').innerText = mins;
-                        el.querySelector('.s').innerText = secs;
-                    }
+                if (distance < 0) {
+                    document.getElementById(`days-${index}`).innerText = "00";
+                    document.getElementById(`hours-${index}`).innerText = "00";
+                    document.getElementById(`minutes-${index}`).innerText = "00";
+                    document.getElementById(`seconds-${index}`).innerText = "00";
+                    return;
                 }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById(`days-${index}`).innerText = days < 10 ? '0' + days : days;
+                document.getElementById(`hours-${index}`).innerText = hours < 10 ? '0' + hours : hours;
+                document.getElementById(`minutes-${index}`).innerText = minutes < 10 ? '0' + minutes : minutes;
+                document.getElementById(`seconds-${index}`).innerText = seconds < 10 ? '0' + seconds : seconds;
             });
         }
 
-        // Arka Plan Değiştirme Scripti
-        function changeBackground(event) {
-            const reader = new FileReader();
-            reader.onload = function() {
-                const url = reader.result;
-                document.body.style.backgroundImage = `url(${url})`;
-                localStorage.setItem('siteBg', url);
+        // --- PANEL MANTIĞI ---
+        function togglePanel() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('active');
+            if (panel.classList.contains('active')) {
+                renderGallery();
             }
-            reader.readAsDataURL(event.target.files[0]);
         }
 
-        init();
-    </script>
-</body>
-</html>
+        function addTimer() {
+            const name = document.getElementById('eventName').value;
+            const date = document.getElementById('eventDate').value;
+
+            if (!name || !date) {
+                alert("Lütfen etkinlik adı ve tarih seçin!");
+                return;
+            }
+
+            timers.push({ name, date });
+            localStorage.setItem('myTimers', JSON.stringify(timers));
+            
+            // Formu temizle
+            document.getElementById('eventName').value = '';
+            document.getElementById('eventDate').value = '';
+            
+            renderTimers();
+            alert("Sayaç eklendi!");
+        }
+
+        function deleteTimer(index) {
+            if(confirm("Bu sayacı silmek istediğinize emin misiniz?")) {
+                timers.splice(index, 1);
+                localStorage.setItem('myTimers', JSON.stringify(timers));
+                renderTimers();
+            }
+        }
+
+        // --- ARKA PLAN MANTIĞI ---
+        function handleImageUpload(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const base64Image = e.target.result;
+                    backgrounds.push(base64Image);
+                    localStorage.setItem('myBackgrounds', JSON.stringify(backgrounds));
+                    renderGallery();
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function renderGallery() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            if (backgrounds.length === 0) {
+                gallery.innerHTML = '<div class="empty-msg">Henüz görsel yok</div>';
+                return;
+            }
+
+            backgrounds.forEach((imgSrc, index) => {
+                const img = document.createElement('img');
+                img.src = imgSrc;
+                img.className = 'gallery-item';
+                if (currentBackground === imgSrc) {
+                    img.classList.add('selected');
+                }
+                img.onclick = () => selectBackground(imgSrc);
+                gallery.appendChild(img);
+            });
+        }
+
+        function selectBackground(imgSrc) {
+            currentBackground = imgSrc;
+            localStorage.setItem('currentBackground', currentBackground);
+            document.body.style.backgroundImage = `url('${imgSrc}')`;
+            renderGallery(); // Seçimi güncellemek için
+        }
+
+        // --- BAŞLANGIÇ ---
+        // Sayfa yüklendiğinde arka planı ayarla
+        if (currentBackground) {
+            document.body.style.backgroundImage = `url('${currentBackground}')`;
+        }
+
+        // Sayaçları başlat
+        renderTimers();
+        setInterval(updateCountdowns, 1000
