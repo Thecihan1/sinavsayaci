@@ -6,12 +6,6 @@
 <title>Dünya Haritası</title>
 
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 body {
     background: #0a0f1e;
     font-family: Arial, sans-serif;
@@ -24,10 +18,10 @@ h1 {
     color: #7ec8e3;
 }
 
-#map-container {
-    width: 95%;
+svg {
+    width: 100%;
     max-width: 1200px;
-    margin: auto;
+    height: auto;
 }
 
 .country {
@@ -51,9 +45,7 @@ h1 {
 
 <h1>Dünya Haritası</h1>
 
-<div id="map-container">
-    <svg id="world" width="1000" height="500"></svg>
-</div>
+<svg id="world" viewBox="0 0 1000 500"></svg>
 
 <script>
 
@@ -81,9 +73,8 @@ d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
         .attr("class", "country");
 
 })
-.catch(err => {
-    document.getElementById("map-container").innerHTML =
-        "<p style='color:red'>Harita yüklenemedi</p>";
+.catch(() => {
+    document.body.innerHTML += "<p style='color:red'>Harita yüklenemedi</p>";
 });
 
 </script>
