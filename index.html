@@ -3,161 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nekadar Kaldı - Dünya Haritası</title>
+    <title>Nekadar Kaldı</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             background-color: #0b0b0b;
-            font-family: 'Segoe UI', sans-serif;
+            font-family: sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
-            overflow: hidden;
         }
 
         .title {
             color: #eee;
-            letter-spacing: 5px;
             margin-bottom: 20px;
-            transition: filter 0.5s ease;
+            letter-spacing: 3px;
+            transition: filter 0.4s;
         }
 
-        /* Harita Kutusu (Deniz) */
-        .map-box {
-            width: 80%;
-            max-width: 900px;
-            aspect-ratio: 2 / 1;
-            background-color: #1a1a1a; /* Açık Siyah Deniz */
+        /* Harita Çerçevesi */
+        .map-container {
+            width: 70%;
+            max-width: 800px;
+            background-color: #1a1a1a; /* Deniz: Açık Siyah */
             border-radius: 15px;
+            padding: 20px;
             position: relative;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: filter 0.5s ease;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            overflow: hidden; /* Taşmaları engelle */
         }
 
         svg#world-map {
             width: 100%;
-            height: 100%;
+            height: auto;
+            transition: filter 0.5s ease;
         }
 
+        /* Ülkeler */
         path {
-            fill: #444; /* Koyu Gri Karalar */
+            fill: #444; /* Karalar: Koyu Gri */
             stroke: #1a1a1a;
-            stroke-width: 0.5;
+            stroke-width: 0.8;
             cursor: pointer;
-            transition: fill 0.3s ease;
+            transition: fill 0.3s;
         }
 
         path:hover {
-            fill: #777;
+            fill: #666;
         }
 
-        /* Zoom Paneli */
-        #zoom-overlay {
+        /* ZOOM EKRANI (JS ile kontrol edilecek) */
+        #zoom-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            display: none;
+            display: none; /* Sadece zoom anında açılır */
             justify-content: center;
             align-items: center;
-            z-index: 100;
-            border-radius: 15px;
+            z-index: 10;
+            background: rgba(0,0,0,0.2); /* Hafif karartma */
         }
 
-        #zoom-overlay.active {
-            display: flex;
-        }
-
-        /* Zoomlanan Ülkenin Kutusu */
-        #zoomed-country-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        /* Zoomlanan Ülkenin Stili */
+        #zoomed-country-svg {
+            width: 80%;
+            height: 80%;
             transform: scale(0);
-            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
-        #zoom-overlay.active #zoomed-country-container {
-            transform: scale(3.5); /* Harita kutusunu dolduracak kadar büyüme */
+        .active #zoomed-country-svg {
+            transform: scale(1);
         }
 
-        #zoomed-country-container path {
-            fill: #aaa !important; /* Zoomlanan ülke daha açık gri */
-            stroke: #fff;
-            stroke-width: 0.1;
-        }
-
-        /* Blur Efekti */
+        /* Blur Sınıfı */
         .blur {
-            filter: blur(10px);
-            pointer-events: none;
+            filter: blur(12px);
         }
     </style>
 </head>
 <body>
 
-    <h1 class="title" id="main-title">NE KADAR KALDI?</h1>
+    <h2 class="title" id="page-title">NE KADAR KALDI?</h2>
 
-    <div class="map-box" id="map-frame">
+    <div class="map-container" id="frame">
         <svg id="world-map" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
-            <g id="map-paths">
-                <path d="M190,135 L210,130 L230,150 L220,180 L180,170 Z M250,100 L300,100 L320,150 L280,180 Z" id="NAmerica"/>
-                <path d="M250,250 L300,250 L320,350 L280,450 L240,350 Z" id="SAmerica"/>
-                <path d="M480,200 L550,180 L600,250 L580,350 L500,400 L450,300 Z" id="Africa"/>
-                <path d="M480,100 L550,80 L600,120 L580,180 L500,190 Z" id="Europe"/>
-                <path d="M600,100 L850,100 L900,250 L750,350 L600,200 Z" id="Asia"/>
-                <path d="M800,350 L900,350 L920,420 L820,430 Z" id="Australia"/>
-                <path d="M350,50 L420,40 L440,100 L350,110 Z" id="Greenland"/>
-                <path d="M560,165 L590,160 L595,175 L565,180 Z" id="Turkey"/>
+            <g id="main-paths">
+                <path d="M150,150 L250,130 L280,250 L180,300 Z" id="k-amerika" />
+                <path d="M450,200 L580,180 L620,300 L550,450 L480,400 Z" id="afrika" />
+                <path d="M500,80 L700,70 L850,150 L750,300 L550,200 Z" id="avrasya" />
+                <path d="M800,380 L900,370 L920,450 L820,460 Z" id="avustralya" />
             </g>
         </svg>
 
-        <div id="zoom-overlay">
-            <svg id="zoomed-country-container" viewBox="0 0 1000 500"></svg>
+        <div id="zoom-layer">
+            <svg id="zoomed-country-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
     </div>
 
     <script>
-        const paths = document.querySelectorAll('#map-paths path');
-        const overlay = document.getElementById('zoom-overlay');
-        const zoomedContainer = document.getElementById('zoomed-country-container');
-        const mapFrame = document.getElementById('world-map');
-        const mainTitle = document.getElementById('main-title');
-
+        const paths = document.querySelectorAll('#main-paths path');
+        const zoomLayer = document.getElementById('zoom-layer');
+        const zoomedSvg = document.getElementById('zoomed-country-svg');
+        const worldMap = document.getElementById('world-map');
+        const pageTitle = document.getElementById('page-title');
+        
         let timer;
 
         paths.forEach(country => {
             country.addEventListener('mouseenter', () => {
+                // 3 saniye sayacı
                 timer = setTimeout(() => {
-                    // Zoom yapılacak ülkeyi klonla
-                    const clone = country.cloneNode(true);
-                    
-                    // Klonlanan ülkeyi merkeze almak için viewBox hesaplama
                     const bbox = country.getBBox();
-                    const centerX = bbox.x + bbox.width / 2;
-                    const centerY = bbox.y + bbox.height / 2;
                     
-                    // Zoom SVG'sini ülke merkezine odakla
-                    zoomedContainer.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+                    // 1. Zoom SVG'sinin içini hazırla ve merkezle
+                    zoomedSvg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+                    zoomedSvg.innerHTML = country.outerHTML;
                     
-                    zoomedContainer.innerHTML = '';
-                    zoomedContainer.appendChild(clone);
+                    // 2. Efektleri uygula
+                    zoomLayer.style.display = 'flex';
+                    setTimeout(() => zoomLayer.classList.add('active'), 10); // Animasyon tetikleyici
                     
-                    // Efektleri Aktif Et
-                    overlay.classList.add('active');
-                    mapFrame.classList.add('blur');
-                    mainTitle.classList.add('blur');
-                }, 3000); // 3 Saniye bekleme
+                    worldMap.classList.add('blur');
+                    pageTitle.classList.add('blur');
+                }, 3000);
             });
 
             country.addEventListener('mouseleave', () => {
@@ -165,11 +139,13 @@
             });
         });
 
-        // Çıkmak için tıkla
-        overlay.addEventListener('click', () => {
-            overlay.classList.remove('active');
-            mapFrame.classList.remove('blur');
-            mainTitle.classList.remove('blur');
+        // Kapatmak için zoomlanan ülkeye veya boşluğa tıkla
+        zoomLayer.addEventListener('click', () => {
+            zoomLayer.classList.remove('active');
+            setTimeout(() => zoomLayer.style.display = 'none', 600);
+            
+            worldMap.classList.remove('blur');
+            pageTitle.classList.remove('blur');
             clearTimeout(timer);
         });
     </script>
