@@ -2,144 +2,151 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Nekadar Kaldı - Dünya Haritası</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İnteraktif Dünya Haritası</title>
+    <!-- D3.js ve TopoJSON kütüphanelerini CDN üzerinden çekiyoruz -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
+    
     <style>
         body {
             margin: 0;
-            background-color: #0b0b0b;
+            background-color: #050505; /* Sayfa arka planı çok koyu */
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            font-family: sans-serif;
-            color: #eee;
-        }
-
-        .title { margin-top: 30px; letter-spacing: 3px; }
-
-        /* Harita Kutusu: Boyutlar sabit, taşmalar gizli */
-        .map-container {
-            margin-top: 40px;
-            width: 800px; 
-            height: 450px;
-            background-color: #1a1a1a; /* Deniz Rengi: Açık Siyah */
-            border-radius: 12px;
+            height: 100vh;
             overflow: hidden;
-            position: relative;
-            border: 1px solid #333;
+            font-family: sans-serif;
         }
 
-        /* Katman yapısı: Zoom bu div üzerinden yapılacak */
-        #zoom-layer {
+        #map-container {
             width: 100%;
             height: 100%;
-            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-            transform-origin: 0 0; /* Sol üstten referans alıp JS ile hesaplayacağız */
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        svg {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        /* Kara Parçaları: Açık Gri */
+        /* Harita üzerindeki ülkelerin stili */
         path {
-            fill: #4a4a4a;
-            stroke: #1a1a1a;
-            stroke-width: 0.4;
-            transition: fill 0.3s ease, filter 0.8s ease, opacity 0.8s ease;
+            fill: #333333; /* Kara parçaları: Koyu Gri */
+            stroke: #000000; /* Ülke sınırları: Siyah */
+            stroke-width: 0.5px;
+            transition: fill 0.3s, transform 0.3s; /* Yumuşak geçişler */
             cursor: pointer;
         }
 
-        path:hover { fill: #888; }
+        /* Mouse üzerine gelince (Hover) */
+        path:hover {
+            fill: #555555; /* Hafif açılan gri */
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
+        }
 
-        /* Efektler */
-        .blurred { filter: blur(4px); opacity: 0.2; }
-        .focused { fill: #ffffff !important; filter: none !important; opacity: 1 !important; }
+        /* Zoom yapıldığında arka planın durumu */
+        .zoomed-bg {
+            fill: #111111; /* Sular: Açık Siyah / Koyu Gri */
+        }
     </style>
 </head>
 <body>
 
-    <h2 class="title">NE KADAR KALDI?</h2>
+    <div id="map-container"></div>
 
-    <div class="map-container">
-        <div id="zoom-layer">
-            <svg id="worldMap" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice">
-                <g id="countries-group"></g>
-            </svg>
-        </div>
-    </div>
+    <script>
+        // 1. Harita Ayarları
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const svg = d3.select("#map-container").append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("viewBox", `0 0 ${width} ${height}`);
 
-<script>
-    const group = document.getElementById('countries-group');
-    const zoomLayer = document.getElementById('zoom-layer');
-    let zoomTimer;
+        // 2. Zoom ve Pan (Kaydırma) Ayarları
+        const zoom = d3.zoom()
+            .scaleExtent([1, 8]) // Minimum ve maksimum zoom seviyesi
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
 
-    // Harita verisini çek ve çiz
-    fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson')
-        .then(res => res.json())
-        .then(geoData => {
-            geoData.features.forEach(feature => {
-                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                path.setAttribute("d", createPath(feature));
+        svg.call(zoom);
+
+        // Haritayı çizmek için bir grup (group) oluşturuyoruz
+        const g = svg.append("g");
+
+        // 3. Harita Verisini Çekme ve Projeksiyon
+        // D3 Geo Mercator projeksiyonu kullanıyoruz
+        const projection = d3.geoMercator()
+            .center([0, 20]) // Haritayı dikey olarak biraz yukarı kaydır
+            .scale(width / 5.5) // Ekran genişliğine göre ölçek
+            .translate([width / 2, height / 2]);
+
+        // 4. TopoJSON Verisini Yükle
+        // Dünyanın topoğrafik verisini buradan çekiyoruz.
+        d3.json("https://unpkg.com/world-atlas@2.0.2/countries-110m.json").then(world => {
+            
+            // TopoJSON'u GeoJSON'a çeviriyoruz
+            const countries = topojson.feature(world, world.objects.countries).features;
+
+            // 5. Haritayı Çizme
+            g.selectAll("path")
+                .data(countries)
+                .enter().append("path")
+                .attr("d", d3.geoPath().projection(projection))
+                .attr("class", "country");
+
+            // 6. İnteraktif Özellikler (Mouse Bekleme ve Zoom)
+            const hoverTimeout = 2000; // 2 saniye (2000 ms)
+            let timer = null;
+
+            g.selectAll("path")
+                .on("mouseenter", function(event, d) {
+                    // Mouse üzerine gelince hemen biraz büyüt
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .attr("transform", "scale(1.02)");
+
+                    // 2 saniyelik sayacı başlat
+                    timer = setTimeout(() => {
+                        zoomToCountry(d);
+                    }, hoverTimeout);
+                })
+                .on("mouseleave", function() {
+                    // Mouse çıkarsa büyümeyi geri al
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .attr("transform", "scale(1)");
+
+                    // Sayacı iptal et (yeni bir ülke üzerine gelince de iptal edilmeli)
+                    clearTimeout(timer);
+                });
+
+            // 7. Zoom Fonksiyonu
+            function zoomToCountry(feature) {
+                // Ülkenin merkezini (centroid) bul
+                const centroid = d3.geoCentroid(feature);
                 
-                path.addEventListener('mouseenter', () => {
-                    zoomTimer = setTimeout(() => zoomToCountry(path), 2000);
-                });
-                path.addEventListener('mouseleave', () => {
-                    clearTimeout(zoomTimer);
-                    resetZoom();
-                });
-                group.appendChild(path);
-            });
+                // Projeksiyona göre koordinatları hesapla
+                const [x, y] = projection(centroid);
+
+                // Zoom yap
+                svg.transition()
+                    .duration(1000) // 1 saniye sürede zoom yap
+                    .call(
+                        zoom.transform, 
+                        d3.zoomIdentity.translate(width / 2, height / 2).scale(3).translate(-x, -y)
+                    );
+            }
         });
 
-    function createPath(feature) {
-        let d = "";
-        const coords = feature.geometry.type === "MultiPolygon" ? feature.geometry.coordinates : [feature.geometry.coordinates];
-        coords.forEach(poly => {
-            const ring = feature.geometry.type === "MultiPolygon" ? poly[0] : poly;
-            ring.forEach((c, i) => {
-                const x = (c[0] + 180) * (1000 / 360);
-                const y = (90 - c[1]) * (500 / 180);
-                d += (i === 0 ? "M" : "L") + x + "," + y;
-            });
-            d += "Z";
+        // Pencere boyutu değişirse haritayı güncelle
+        window.addEventListener('resize', () => {
+            // Basit bir yenileme (Gerçek projede daha detaylı hesaplanmalı)
+            location.reload(); 
         });
-        return d;
-    }
 
-    function zoomToCountry(el) {
-        const bbox = el.getBBox();
-        const containerWidth = 800;
-        const containerHeight = 450;
-
-        // Ülke merkezini bul
-        const centerX = bbox.x + bbox.width / 2;
-        const centerY = bbox.y + bbox.height / 2;
-
-        // Zoom ölçeği (Sabit 4 kat büyüme veya ülke boyutuna göre dinamik)
-        const scale = 4;
-
-        // Zoom katmanını merkeze göre kaydır
-        const tx = (containerWidth / 2) - (centerX * scale);
-        const ty = (containerHeight / 2) - (centerY * scale);
-
-        zoomLayer.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
-        
-        // Blur ve Fokus
-        document.querySelectorAll('path').forEach(p => {
-            if(p === el) p.classList.add('focused');
-            else p.classList.add('blurred');
-        });
-    }
-
-    function resetZoom() {
-        zoomLayer.style.transform = "translate(0,0) scale(1)";
-        document.querySelectorAll('path').forEach(p => {
-            p.classList.remove('focused', 'blurred');
-        });
-    }
-</script>
+    </script>
 </body>
 </html>
