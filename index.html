@@ -15,13 +15,6 @@
             align-items: center;
         }
 
-        .title {
-            color: #eee;
-            margin-top: 20px;
-            letter-spacing: 2px;
-            transition: filter 0.3s ease;
-        }
-
         /* Harita Konteynırı */
         .map-container {
             margin-top: 50px;
@@ -33,14 +26,13 @@
             padding: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             overflow: visible;
-            transition: filter 0.3s ease;
         }
 
         /* SVG Harita Stili */
-        #world-map {
+        svg {
             width: 100%;
             height: auto;
-            display: block;
+            transition: filter 0.5s ease;
         }
 
         /* Ülke (Kara Parçaları) Stili */
@@ -49,56 +41,35 @@
             stroke: #2a2a2a; /* Sınır çizgileri */
             stroke-width: 0.5;
             cursor: pointer;
-            transition: fill 0.3s ease;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+                        fill 0.3s ease;
+            transform-origin: center;
         }
 
         path:hover {
             fill: #808080; /* Üstüne gelince açık gri */
+            /* 3 saniye bekleme animasyonu tetikleyicisi */
+            transition-delay: 3s; 
+            transform: scale(2.5); /* Çerçeve kadar büyüme */
+            z-index: 100;
+            position: relative;
         }
 
-        /* ZOOM EFEKTİ İÇİN CSS SINIFLARI (JS ile eklenecek) */
-
-        /* Bulanıklaşacak arka plan öğeleri */
-        .blur-background {
-            filter: blur(8px) grayscale(50%);
-            pointer-events: none; /* Arka plana tıklamayı engelle */
+        /* Blur Efekti: Bir ülkeye odaklanıldığında haritanın geri kalanı */
+        .map-container:has(path:hover) svg {
+            filter: blur(4px);
+            transition-delay: 3s;
         }
 
-        /* Yakınlaştırılmış ülkenin stilini belirleyen konteynır */
-        #zoom-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000; /* Her şeyin üstünde */
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.5s ease;
+        /* Hover edilen ülkenin blurdan etkilenmemesi için */
+        path:hover {
+            filter: blur(0) !important;
         }
 
-        #zoom-container.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        /* Yakınlaştırılan ülkenin kopyası */
-        #zoomed-country {
-            width: auto;
-            height: auto;
-            max-width: 80%; /* Harita çerçevesi kadar büyüme */
-            max-height: 80%;
-            transform: scale(1);
-            transition: transform 0.5s ease;
-        }
-
-        #zoomed-country path {
-            fill: #a0a0a0; /* Yakınlaşınca daha açık gri */
-            stroke: #fff; /* Beyaz sınırlar */
-            stroke-width: 1;
+        .title {
+            color: #eee;
+            margin-top: 20px;
+            letter-spacing: 2px;
         }
     </style>
 </head>
@@ -106,85 +77,10 @@
 
     <h2 class="title">NE KADAR KALDI?</h2>
 
-    <div class="map-container" id="main-map-container">
-        <svg id="world-map" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
-            <path id="country-1" d="M200,100 Q250,50 300,100 T400,150 L350,250 Z" />
-            <path id="country-2" d="M500,200 Q550,150 600,200 T700,250 L650,350 Z" />
-            <path id="country-3" d="M700,50 Q750,20 800,50 T900,100 L850,200 Z" />
-        </svg>
+    <div class="map-container">
+        <svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+            <path d="M200,100 Q250,50 300,100 T400,150 L350,250 Z" /> <path d="M500,200 Q550,150 600,200 T700,250 L650,350 Z" /> <path d="M700,50 Q750,20 800,50 T900,100 L850,200 Z" /> </svg>
     </div>
 
-    <div id="zoom-container">
-        <svg id="zoomed-country" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
-            </svg>
-    </div>
-
-    <script>
-        const worldMap = document.getElementById('world-map');
-        const mainMapContainer = document.getElementById('main-map-container');
-        const title = document.querySelector('.title');
-        const zoomContainer = document.getElementById('zoom-container');
-        const zoomedCountrySvg = document.getElementById('zoomed-country');
-
-        let hoverTimer; // 3 saniye sayacı
-        const zoomDelay = 3000; // 3 saniye (milisaniye)
-
-        // Haritadaki tüm 'path' (ülke) öğelerine olay dinleyicileri ekle
-        worldMap.querySelectorAll('path').forEach(country => {
-            
-            // MOUSE ÜSTÜNE GELDİĞİNDE
-            country.addEventListener('mouseenter', (e) => {
-                // Eğer zaten zoom aktifse yeni sayaç başlatma
-                if (zoomContainer.classList.contains('active')) return;
-
-                // 3 saniyelik sayacı başlat
-                hoverTimer = setTimeout(() => {
-                    activateZoom(e.target);
-                }, zoomDelay);
-            });
-
-            // MOUSE ÜSTÜNDEN GİTTİĞİNDE
-            country.addEventListener('mouseleave', () => {
-                // Eğer zoom aktif değilse sayacı iptal et
-                if (!zoomContainer.classList.contains('active')) {
-                    clearTimeout(hoverTimer);
-                }
-            });
-        });
-
-        // ZOOM EFEKTİNİ BAŞLAT
-        function activateZoom(countryPath) {
-            // 1. Arka planı bulanıklaştır (Başlık ve Ana Harita)
-            mainMapContainer.classList.add('blur-background');
-            title.classList.add('blur-background');
-
-            // 2. Hover edilen ülkenin SVG kopyasını al
-            const countryClone = countryPath.cloneNode(true);
-            
-            // 3. Zoom konteynırını temizle ve kopyayı ekle
-            zoomedCountrySvg.innerHTML = ''; // Önceki kopyayı sil
-            zoomedCountrySvg.appendChild(countryClone);
-
-            // 4. Zoom konteynırının viewBox'ını kopyalanan ülkeye göre ayarla (Netlik için)
-            // Bu kısım basit SVG'lerde çalışır, detaylı haritalarda viewBox'ı sabit tutmak daha iyidir.
-            // zoomedCountrySvg.setAttribute('viewBox', countryPath.ownerSVGElement.getAttribute('viewBox'));
-
-            // 5. Zoom konteynırını aktif et
-            zoomContainer.classList.add('active');
-        }
-
-        // ZOOM EFEKTİNİ KAPAT (Zoom konteynırına tıklayınca)
-        zoomContainer.addEventListener('click', () => {
-            // 1. Bulanıklığı kaldır
-            mainMapContainer.classList.remove('blur-background');
-            title.classList.remove('blur-background');
-
-            // 2. Zoom konteynırını gizle
-            zoomContainer.classList.remove('active');
-            
-            // 3. 3 saniyelik sayacı temizle (Tekrar hover olduğunda hemen başlamasın)
-            clearTimeout(hoverTimer);
-        });
-    </script>
 </body>
 </html>
