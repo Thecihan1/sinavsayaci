@@ -2,114 +2,135 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zoom Harita</title>
+    <title>Minimalist Dünya Haritası</title>
     <style>
         body {
-            background-color: #121212; /* Genel sayfa koyu tema */
+            background-color: #0d0d0d; /* Sayfa arka planı koyu */
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            justify-content: center;
             margin: 0;
+            padding-top: 40px; /* Üstten boşluk */
+            overflow-x: hidden;
             font-family: sans-serif;
         }
 
-        /* Harita Konteynırı */
-        #map-container {
-            position: relative;
-            width: 600px; /* Çok büyük olmasın demiştin */
+        /* Harita Kutusu (Kısıtlı Boyut) */
+        #map-wrapper {
+            width: 700px; 
             height: 400px;
-            margin-top: 50px; /* Orta üst kısım */
-            background-color: #1a1a1a; /* Deniz rengi (Açık siyah) */
-            border-radius: 12px;
-            overflow: hidden;
+            background-color: #1a1a1a; /* Deniz Rengi (Açık Siyah) */
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden; /* Zoom dışarı taşmasın */
             border: 1px solid #333;
-            transition: all 0.5s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* SVG Harita Stili */
         svg {
             width: 100%;
             height: 100%;
-            transition: transform 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+            transition: transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transform-origin: center;
         }
 
-        /* Kara parçaları */
+        /* Ülkeler */
         path {
-            fill: #d1d1d1; /* Açık gri tonları */
-            stroke: #1a1a1a;
+            fill: #b0b0b0; /* Kara parçaları: Açık Gri */
+            stroke: #1a1a1a; /* Sınırlar deniz renginde */
             stroke-width: 0.5;
-            transition: fill 0.3s;
-            cursor: pointer;
+            transition: fill 0.3s, filter 0.8s, opacity 0.8s;
+            cursor: crosshair;
         }
 
+        /* Hover anındaki anlık renk */
         path:hover {
-            fill: #ffffff; /* Üzerine gelince parlasın */
+            fill: #ffffff;
         }
 
-        /* Blur Efekti Arka Planı */
-        .blurred {
-            filter: blur(5px);
-            opacity: 0.4;
+        /* Zoom sırasında diğerlerine uygulanacak blur */
+        .blur-others {
+            filter: blur(4px);
+            opacity: 0.3;
         }
 
-        /* Zoomlandığında kutuyu doldurma mantığı JS ile yönetilecek */
+        /* Zoomlanan ülkenin öne çıkması */
+        .focused {
+            filter: none !important;
+            opacity: 1 !important;
+            fill: #ffffff !important;
+        }
     </style>
 </head>
 <body>
 
-    <div id="map-container">
-        <svg id="world-map" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
-            <path d="M150,150 L250,150 L200,250 Z" data-name="Ulke1"></path>
-            <path d="M400,100 L500,100 L500,200 L400,200 Z" data-name="Ulke2"></path>
-            <path d="M700,300 L850,300 L775,450 Z" data-name="Ulke3"></path>
-            </svg>
-    </div>
+<div id="map-wrapper">
+    <svg id="worldMap" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice">
+        <g id="regions">
+            <path id="n_america" d="M100,100 L250,100 L300,250 L150,300 Z" />
+            <path id="s_america" d="M280,300 L350,300 L320,450 L260,420 Z" />
+            <path id="eurasia" d="M450,80 L850,80 L900,280 L500,320 Z" />
+            <path id="africa" d="M480,300 L600,280 L620,450 L520,450 Z" />
+            <path id="oceania" d="M800,350 L920,350 L900,450 L820,450 Z" />
+            </g>
+    </svg>
+</div>
 
-    <script>
-        const paths = document.querySelectorAll('path');
-        const svg = document.getElementById('world-map');
-        const container = document.getElementById('map-container');
-        let zoomTimeout;
+<script>
+    const svg = document.getElementById('worldMap');
+    const paths = document.querySelectorAll('path');
+    let zoomTimer;
 
-        paths.forEach(path => {
-            path.addEventListener('mouseenter', (e) => {
-                // 2 saniye bekleme süresi başlat
-                zoomTimeout = setTimeout(() => {
-                    zoomToCountry(e.target);
-                }, 2000);
-            });
-
-            path.addEventListener('mouseleave', () => {
-                // Üstünden çekilirse iptal et ve resetle
-                clearTimeout(zoomTimeout);
-                resetZoom();
-            });
+    paths.forEach(country => {
+        country.addEventListener('mouseenter', (e) => {
+            // 2 saniye bekleme süresini başlat
+            zoomTimer = setTimeout(() => {
+                performZoom(e.target);
+            }, 2000);
         });
 
-        function zoomToCountry(element) {
-            const bbox = element.getBBox();
-            const centerX = bbox.x + bbox.width / 2;
-            const centerY = bbox.y + bbox.height / 2;
-            
-            // Zoom miktarını hesapla (Kutuyu kaplayacak şekilde)
-            const scale = 4; 
-            const moveX = 500 - (centerX * scale);
-            const moveY = 250 - (centerY * scale);
+        country.addEventListener('mouseleave', () => {
+            // 2 saniye dolmadan çıkarsa iptal et
+            clearTimeout(zoomTimer);
+            resetMap();
+        });
+    });
 
-            // Stilleri uygula
-            svg.style.transform = `translate(${moveX}px, ${moveY}px) scale(${scale})`;
-            
-            // Diğer her şeyi blurla (Basit yöntem: SVG içine class ekle)
-            paths.forEach(p => {
-                if(p !== element) p.classList.add('blurred');
-            });
-        }
+    function performZoom(target) {
+        const bbox = target.getBBox();
+        const containerWidth = 700;
+        const containerHeight = 400;
 
-        function resetZoom() {
-            svg.style.transform = `translate(0,0) scale(1)`;
-            paths.forEach(p => p.classList.remove('blurred'));
-        }
-    </script>
+        // Ülkenin merkezini bul
+        const centerX = bbox.x + bbox.width / 2;
+        const centerY = bbox.y + bbox.height / 2;
+
+        // Zoom miktarını kutuya göre ayarla
+        const scale = Math.min(containerWidth / bbox.width, containerHeight / bbox.height) * 0.6;
+        
+        // SVG'yi merkeze kaydır ve büyüt
+        const moveX = (containerWidth / 2) - (centerX * scale);
+        const moveY = (containerHeight / 2) - (centerY * scale);
+
+        svg.style.transform = `translate(${moveX}px, ${moveY}px) scale(${scale})`;
+
+        // Diğerlerini blurla
+        paths.forEach(p => {
+            if (p !== target) {
+                p.classList.add('blur-others');
+            } else {
+                p.classList.add('focused');
+            }
+        });
+    }
+
+    function resetMap() {
+        svg.style.transform = `translate(0, 0) scale(1)`;
+        paths.forEach(p => {
+            p.classList.remove('blur-others');
+            p.classList.remove('focused');
+        });
+    }
+</script>
+
 </body>
 </html>
