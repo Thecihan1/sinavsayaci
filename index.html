@@ -1,153 +1,164 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nekadar Kaldı</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #0b0b0b;
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dünya Haritası</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        .title {
-            color: #eee;
-            margin-bottom: 20px;
-            letter-spacing: 3px;
-            transition: filter 0.4s;
-        }
+    body {
+      background: #0a0f1e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+    }
 
-        /* Harita Çerçevesi */
-        .map-container {
-            width: 70%;
-            max-width: 800px;
-            background-color: #1a1a1a; /* Deniz: Açık Siyah */
-            border-radius: 15px;
-            padding: 20px;
-            position: relative;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
-            overflow: hidden; /* Taşmaları engelle */
-        }
+    h1 {
+      color: #7ec8e3;
+      font-size: 1.8rem;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+    }
 
-        svg#world-map {
-            width: 100%;
-            height: auto;
-            transition: filter 0.5s ease;
-        }
+    #map-container {
+      width: 95vw;
+      max-width: 1300px;
+      background: #0d1b2a;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 0 60px rgba(126, 200, 227, 0.12);
+    }
 
-        /* Ülkeler */
-        path {
-            fill: #444; /* Karalar: Koyu Gri */
-            stroke: #1a1a1a;
-            stroke-width: 0.8;
-            cursor: pointer;
-            transition: fill 0.3s;
-        }
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
 
-        path:hover {
-            fill: #666;
-        }
+    .country {
+      fill: #2a6496;
+      stroke: #0a0f1e;
+      stroke-width: 0.4;
+      cursor: pointer;
+      transform-box: fill-box;
+      transform-origin: center;
+      transition: transform 0.22s ease, fill 0.22s ease, filter 0.22s ease;
+    }
 
-        /* ZOOM EKRANI (JS ile kontrol edilecek) */
-        #zoom-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none; /* Sadece zoom anında açılır */
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-            background: rgba(0,0,0,0.2); /* Hafif karartma */
-        }
+    .country:hover {
+      fill: #f0a500;
+      transform: scale(2);
+      filter: drop-shadow(0 0 8px rgba(240,165,0,0.9));
+    }
 
-        /* Zoomlanan Ülkenin Stili */
-        #zoomed-country-svg {
-            width: 80%;
-            height: 80%;
-            transform: scale(0);
-            transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
-        }
+    #tooltip {
+      position: fixed;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 7px 13px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      pointer-events: none;
+      display: none;
+      border: 1px solid #f0a500;
+      z-index: 9999;
+      white-space: nowrap;
+    }
 
-        .active #zoomed-country-svg {
-            transform: scale(1);
-        }
-
-        /* Blur Sınıfı */
-        .blur {
-            filter: blur(12px);
-        }
-    </style>
+    #status {
+      color: #7ec8e3;
+      margin-top: 12px;
+      font-size: 0.85rem;
+    }
+  </style>
 </head>
 <body>
+  <h1>Dünya Haritası</h1>
+  <div id="map-container">
+    <svg id="world"></svg>
+  </div>
+  <div id="status">Harita yükleniyor...</div>
+  <div id="tooltip"></div>
 
-    <h2 class="title" id="page-title">NE KADAR KALDI?</h2>
+  <script>
+    const width = 960;
+    const height = 500;
 
-    <div class="map-container" id="frame">
-        <svg id="world-map" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
-            <g id="main-paths">
-                <path d="M150,150 L250,130 L280,250 L180,300 Z" id="k-amerika" />
-                <path d="M450,200 L580,180 L620,300 L550,450 L480,400 Z" id="afrika" />
-                <path d="M500,80 L700,70 L850,150 L750,300 L550,200 Z" id="avrasya" />
-                <path d="M800,380 L900,370 L920,450 L820,460 Z" id="avustralya" />
-            </g>
-        </svg>
+    const svg = d3.select("#world")
+      .attr("viewBox", `0 0 ${width} ${height}`);
 
-        <div id="zoom-layer">
-            <svg id="zoomed-country-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
-        </div>
-    </div>
+    const projection = d3.geoNaturalEarth1()
+      .scale(153)
+      .translate([width / 2, height / 2]);
 
-    <script>
-        const paths = document.querySelectorAll('#main-paths path');
-        const zoomLayer = document.getElementById('zoom-layer');
-        const zoomedSvg = document.getElementById('zoomed-country-svg');
-        const worldMap = document.getElementById('world-map');
-        const pageTitle = document.getElementById('page-title');
-        
-        let timer;
+    const path = d3.geoPath().projection(projection);
 
-        paths.forEach(country => {
-            country.addEventListener('mouseenter', () => {
-                // 3 saniye sayacı
-                timer = setTimeout(() => {
-                    const bbox = country.getBBox();
-                    
-                    // 1. Zoom SVG'sinin içini hazırla ve merkezle
-                    zoomedSvg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
-                    zoomedSvg.innerHTML = country.outerHTML;
-                    
-                    // 2. Efektleri uygula
-                    zoomLayer.style.display = 'flex';
-                    setTimeout(() => zoomLayer.classList.add('active'), 10); // Animasyon tetikleyici
-                    
-                    worldMap.classList.add('blur');
-                    pageTitle.classList.add('blur');
-                }, 3000);
-            });
+    const tooltip = document.getElementById("tooltip");
 
-            country.addEventListener('mouseleave', () => {
-                clearTimeout(timer);
-            });
-        });
+    document.addEventListener("mousemove", e => {
+      tooltip.style.left = (e.clientX + 15) + "px";
+      tooltip.style.top  = (e.clientY - 10) + "px";
+    });
 
-        // Kapatmak için zoomlanan ülkeye veya boşluğa tıkla
-        zoomLayer.addEventListener('click', () => {
-            zoomLayer.classList.remove('active');
-            setTimeout(() => zoomLayer.style.display = 'none', 600);
-            
-            worldMap.classList.remove('blur');
-            pageTitle.classList.remove('blur');
-            clearTimeout(timer);
-        });
-    </script>
+    // Ülke ID -> isim eşlemesi (ISO 3166-1 numeric)
+    const countryNames = {
+      4:"Afganistan",8:"Arnavutluk",12:"Cezayir",24:"Angola",32:"Arjantin",
+      36:"Avustralya",40:"Avusturya",50:"Bangladeş",56:"Belçika",64:"Bhutan",
+      68:"Bolivya",76:"Brezilya",100:"Bulgaristan",104:"Myanmar",116:"Kamboçya",
+      120:"Kamerun",124:"Kanada",144:"Sri Lanka",152:"Şili",156:"Çin",
+      170:"Kolombiya",180:"Kongo",188:"Kosta Rika",191:"Hırvatistan",
+      192:"Küba",196:"Kıbrıs",203:"Çekya",204:"Benin",208:"Danimarka",
+      214:"Dominik Cumhuriyeti",218:"Ekvador",818:"Mısır",222:"El Salvador",
+      231:"Etiyopya",246:"Finlandiya",250:"Fransa",276:"Almanya",288:"Gana",
+      300:"Yunanistan",320:"Guatemala",332:"Haiti",340:"Honduras",348:"Macaristan",
+      356:"Hindistan",360:"Endonezya",364:"İran",368:"Irak",372:"İrlanda",
+      376:"İsrail",380:"İtalya",388:"Jamaika",392:"Japonya",400:"Ürdün",
+      398:"Kazakistan",404:"Kenya",410:"Güney Kore",408:"Kuzey Kore",
+      414:"Kuveyt",418:"Laos",422:"Lübnan",434:"Libya",440:"Litvanya",
+      442:"Lüksemburg",484:"Meksika",496:"Moğolistan",504:"Fas",508:"Mozambik",
+      516:"Namibya",524:"Nepal",528:"Hollanda",540:"Yeni Kaledonya",
+      554:"Yeni Zelanda",558:"Nikaragua",562:"Nijer",566:"Nijerya",578:"Norveç",
+      586:"Pakistan",591:"Panama",604:"Peru",608:"Filipinler",616:"Polonya",
+      620:"Portekiz",630:"Porto Riko",634:"Katar",642:"Romanya",643:"Rusya",
+      682:"Suudi Arabistan",686:"Senegal",694:"Sierra Leone",703:"Slovakya",
+      706:"Somali",710:"Güney Afrika",724:"İspanya",729:"Sudan",752:"İsveç",
+      756:"İsviçre",760:"Suriye",764:"Tayland",792:"Türkiye",800:"Uganda",
+      804:"Ukrayna",784:"Birleşik Arap Emirlikleri",826:"Birleşik Krallık",
+      840:"Amerika Birleşik Devletleri",858:"Uruguay",860:"Özbekistan",
+      862:"Venezuela",704:"Vietnam",887:"Yemen",894:"Zambiya",716:"Zimbabve",
+      12:"Cezayir",288:"Gana",586:"Pakistan",566:"Nijerya"
+    };
+
+    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+      .then(world => {
+        document.getElementById("status").style.display = "none";
+
+        const countries = topojson.feature(world, world.objects.countries);
+
+        svg.selectAll(".country")
+          .data(countries.features)
+          .join("path")
+          .attr("class", "country")
+          .attr("d", path)
+          .on("mouseenter", function(event, d) {
+            const name = countryNames[+d.id] || "Ülke";
+            tooltip.textContent = name;
+            tooltip.style.display = "block";
+          })
+          .on("mouseleave", function() {
+            tooltip.style.display = "none";
+          });
+      })
+      .catch(err => {
+        document.getElementById("status").textContent = "Hata: " + err.message;
+        document.getElementById("status").style.color = "#ff6b6b";
+      });
+  </script>
 </body>
 </html>
